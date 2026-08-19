@@ -5,7 +5,7 @@ import {
   Button, Input, Progress, Typography, Space, Spin, Alert, Divider,
 } from 'antd';
 import TextareaAutosize from 'react-textarea-autosize';
-import axios from 'axios';
+import api from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import css from 'styled-jsx/css';
 import {
@@ -898,6 +898,8 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
   const [phase, setPhase] = useState<'config' | 'exam'>('config');
   const [state, setState] = useState<ExamState | null>(null);
   const [answer, setAnswer] = useState('');
+  // 最近一次成功提交的答案，评分解析失败时供"重试"原样重发
+  const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [targetPosition, setTargetPosition] = useState('');
   const [topic, setTopic] = useState('');
@@ -905,7 +907,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
 
   const fetchSessionConfig = useCallback(async () => {
     try {
-      const res = await axios.get(`/api/sessions/${sessionId}`);
+      const res = await api.get(`/api/sessions/${sessionId}`, { skipErrorToast: true });
       const examState = res.data?.exam_state || {};
       if (examState.target_position && examState.topic) {
         setTargetPosition(examState.target_position);
@@ -918,7 +920,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
 
   const fetchState = useCallback(async () => {
     try {
-      const res = await axios.get(`/api/exam/${sessionId}`);
+      const res = await api.get(`/api/exam/${sessionId}`, { skipErrorToast: true });
       if (res.data?.status && res.data.status !== 'configuring') {
         setState(res.data);
         setPhase('exam');
@@ -931,6 +933,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
   useEffect(() => {
     fetchSessionConfig();
     fetchState();
+    setLastSubmittedAnswer('');
   }, [fetchSessionConfig, fetchState]);
 
   const startExam = async () => {
@@ -938,7 +941,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
     setLoading(true);
     setChalkStage('start');
     try {
-      const res = await axios.post('/api/exam/start', {
+      const res = await api.post('/api/exam/start', {
         session_id: sessionId,
         target_position: targetPosition.trim(),
         topic: topic.trim(),
@@ -948,8 +951,9 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
       setState(res.data);
       setPhase('exam');
       setAnswer('');
-    } catch (err: any) {
-      alert(err.response?.data?.detail || '启动面试失败');
+      setLastSubmittedAnswer('');
+    } catch {
+      // 拦截器已统一弹出错误提示
       setChalkStage('idle');
     } finally {
       setLoading(false);
@@ -961,14 +965,34 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
     if (!text || !state) return;
     setLoading(true);
     try {
-      const res = await axios.post(`/api/exam/${state.session_id}/next`, {
+      const res = await api.post(`/api/exam/${state.session_id}/next`, {
         answer: text,
         top_k: 5,
       });
       setState(res.data);
+      setLastSubmittedAnswer(text);
       setAnswer('');
-    } catch (err: any) {
-      alert(err.response?.data?.detail || '提交失败');
+    } catch {
+      // 拦截器已统一弹出错误提示
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 放弃本题 / 结束面试：走后端 action 字段，不再用魔法字符串充当答案
+  const submitAction = async (action: 'give_up' | 'end') => {
+    if (!state || loading) return;
+    setLoading(true);
+    try {
+      const res = await api.post(`/api/exam/${state.session_id}/next`, {
+        action,
+        answer: '',
+        top_k: 5,
+      });
+      setState(res.data);
+      setAnswer('');
+    } catch {
+      // 拦截器已统一弹出错误提示
     } finally {
       setLoading(false);
     }
@@ -1102,7 +1126,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
         <div className="ep-question">
           <ReactMarkdown>{state.current_question}</ReactMarkdown>
         </div>
-        {state.current_expectations.length > 0 && (
+        {state.current_expectations && state.current_expectations.length > 0 && (
           <div className="ep-expectation-wrap">
             {state.current_expectations.slice(0, 8).map((e, i) => (
               <span key={i} className="ep-expectation-tag" title={`考察：${e}`}>
@@ -1139,10 +1163,10 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
             <Space>
-              <Button className="op-btn" onClick={() => submitAnswer('不知道')} disabled={loading}>
+              <Button className="op-btn" onClick={() => submitAction('give_up')} disabled={loading}>
                 不知道
               </Button>
-              <Button className="op-btn op-btn-danger" onClick={() => submitAnswer('结束')} disabled={loading}>
+              <Button className="op-btn op-btn-danger" onClick={() => submitAction('end')} disabled={loading}>
                 结束面试
               </Button>
             </Space>
@@ -1200,7 +1224,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
             )}
             <EvaluationCard
               evaluation={state.evaluation}
-              onRetry={() => submitAnswer()}
+              onRetry={lastSubmittedAnswer ? () => submitAnswer(lastSubmittedAnswer) : undefined}
             />
           </div>
         </div>
@@ -1260,6 +1284,7 @@ export default function ExaminerPanel({ sessionId, collectionName }: Props) {
                 setPhase('config');
                 setState(null);
                 setAnswer('');
+                setLastSubmittedAnswer('');
               }}
             >
               重新开始

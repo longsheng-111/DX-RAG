@@ -8,12 +8,11 @@ from typing import Optional, Callable
 from openai import OpenAI
 
 from app.core.config import settings
+from app.services.retrieval import SUFFICIENCY_THRESHOLD
 from app.services.token_tracker import TokenTracker, TokenCost, estimate_tokens
 
 
 MAX_ITERATIONS = 3
-# 使用与检索层一致的相似度阈值，超过此值才认为资料充分
-SUFFICIENCY_THRESHOLD = settings.retrieval_similarity_threshold
 
 
 def _create_client() -> Optional[OpenAI]:
@@ -27,7 +26,7 @@ def _create_client() -> Optional[OpenAI]:
 
 
 def is_sufficient(search_results: list[tuple[str, str, float]]) -> bool:
-    """判断检索结果是否充分"""
+    """判断检索结果是否充分（最高余弦分数需达到 SUFFICIENCY_THRESHOLD=0.75）"""
     if not search_results:
         return False
     max_score = max(score for _, _, score in search_results)
@@ -145,7 +144,7 @@ def agent_query(
 
     queries = [question]
     all_results: list[tuple[str, str, float]] = []
-    step_results: list[list[tuple[str, str, float]]] = []
+    reasoning_steps: list[dict] = []
     iterations = 0
     rewritten_query = None
     prev_results: list[tuple[str, str, float]] = []
@@ -154,9 +153,16 @@ def agent_query(
         iterations = step + 1
         current_query = queries[-1]
 
-        # Action: knowledge_search
+        # Action: knowledge_search，就地记录步骤以保持真实发生顺序
         search_results = retrieve_func(current_query)
-        step_results.append(search_results)
+        reasoning_steps.append({
+            "step": len(reasoning_steps) + 1,
+            "action": "knowledge_search",
+            "query": current_query,
+            "hits": len(search_results),
+            "top_score": round(max((s for _, _, s in search_results), default=0.0), 4),
+            "confidence": "",  # 循环结束后按最终结果统一回填
+        })
 
         # Observation: 合并到总结果
         all_results.extend(search_results)
@@ -179,9 +185,21 @@ def agent_query(
         total_cost["completion_tokens"] += rewrite_cost.completion
         total_cost["total_tokens"] += rewrite_cost.total
 
-        if rewritten != current_query:
-            queries.append(rewritten)
-            rewritten_query = rewritten
+        # 改写失败或改写结果与当前查询相同：直接终止，避免白跑一轮重复检索
+        if rewritten == current_query:
+            break
+
+        queries.append(rewritten)
+        rewritten_query = rewritten
+        # query_rewrite 步骤就地插入，位于两次 knowledge_search 之间
+        reasoning_steps.append({
+            "step": len(reasoning_steps) + 1,
+            "action": "query_rewrite",
+            "query": rewritten,
+            "hits": 0,
+            "top_score": 0.0,
+            "confidence": "medium",
+        })
 
         # 保存上一轮结果用于循环检测
         prev_results = search_results
@@ -199,14 +217,12 @@ def agent_query(
         if len(unique_results) >= 5:
             break
 
-    # 生成答案
+    # 生成答案（在已累加的改写成本上继续累加，避免改写轮次的 token 统计丢失）
     context_chunks = [content for _, content, _ in unique_results]
     answer, gen_cost = generate_func(question, context_chunks, history)
-    total_cost = TokenCost(
-        prompt_tokens=gen_cost.prompt,
-        completion_tokens=gen_cost.completion,
-        total_tokens=gen_cost.total,
-    )
+    total_cost["prompt_tokens"] += gen_cost.prompt
+    total_cost["completion_tokens"] += gen_cost.completion
+    total_cost["total_tokens"] += gen_cost.total
 
     sources = [
         {
@@ -224,27 +240,10 @@ def agent_query(
         else "medium" if max_source_score >= SUFFICIENCY_THRESHOLD
         else "low"
     )
-
-    reasoning_steps = []
-    for step_idx, q in enumerate(queries):
-        hits = step_results[step_idx] if step_idx < len(step_results) else []
-        reasoning_steps.append({
-            "step": step_idx + 1,
-            "action": "knowledge_search",
-            "query": q,
-            "hits": len(hits),
-            "top_score": round(max((s for _, _, s in hits), default=0.0), 4),
-            "confidence": overall_confidence,
-        })
-    if rewritten_query:
-        reasoning_steps.append({
-            "step": len(queries) + 1,
-            "action": "query_rewrite",
-            "query": rewritten_query,
-            "hits": 0,
-            "top_score": 0.0,
-            "confidence": "medium",
-        })
+    # 回填各检索步骤的置信度（执行检索时还无法预知最终结果）
+    for rs in reasoning_steps:
+        if rs["action"] == "knowledge_search":
+            rs["confidence"] = overall_confidence
 
     return {
         "answer": answer,

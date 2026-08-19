@@ -5,13 +5,18 @@
 适合当前阶段的轻量级持久化需求，无需引入数据库。
 """
 import json
+import logging
+import os
 import re
+import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # 会话 ID 格式: sess_ + 16 位 hex
 _SESSION_ID_RE = re.compile(r'^sess_[a-f0-9]{16,}$')
@@ -63,7 +68,13 @@ class Session:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Session":
-        return cls(**data)
+        """从字典构造会话，忽略未知键以兼容旧版本数据"""
+        known_keys = {
+            "session_id", "title", "persona", "kb_id", "mode", "messages",
+            "created_at", "updated_at", "total_tokens", "compressed_history",
+            "exam_state",
+        }
+        return cls(**{k: v for k, v in data.items() if k in known_keys})
 
     def add_message(
         self,
@@ -111,6 +122,18 @@ class SessionManager:
     def _init(self) -> None:
         self.session_dir = Path(settings.session_dir)
         self.session_dir.mkdir(parents=True, exist_ok=True)
+        # 每个会话一把锁，防止并发读写互相覆盖丢消息
+        self._locks: dict[str, threading.Lock] = {}
+        self._locks_guard = threading.Lock()
+
+    def _get_lock(self, session_id: str) -> threading.Lock:
+        """获取指定会话的锁，不存在则创建"""
+        with self._locks_guard:
+            lock = self._locks.get(session_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._locks[session_id] = lock
+            return lock
 
     def _session_path(self, session_id: str) -> Path:
         # 校验格式 + 防路径穿越
@@ -143,23 +166,34 @@ class SessionManager:
         return session
 
     def get_session(self, session_id: str) -> Optional[Session]:
-        """获取会话，不存在返回 None"""
+        """获取会话；不存在或读取失败时返回 None"""
         path = self._session_path(session_id)
         if not path.exists():
             return None
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return Session.from_dict(data)
-        except Exception:
-            return None
+        with self._get_lock(session_id):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return Session.from_dict(data)
+            except json.JSONDecodeError:
+                # 文件损坏：备份为 .corrupt 后按不存在处理，避免反复读到坏文件
+                corrupt = path.with_name(path.name + ".corrupt")
+                os.replace(path, corrupt)
+                logger.warning("会话文件损坏，已备份为 %s: %s", corrupt, session_id)
+                return None
+            except Exception:
+                logger.warning("读取会话失败: %s", session_id, exc_info=True)
+                return None
 
     def save_session(self, session: Session) -> None:
-        """保存会话到 JSON 文件"""
+        """保存会话到 JSON 文件（持锁 + 原子写入，防并发写丢消息）"""
         path = self._session_path(session.session_id)
         session.updated_at = datetime.now().isoformat()
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(session.to_dict(), f, ensure_ascii=False, indent=2)
+        with self._get_lock(session.session_id):
+            tmp = path.with_name(path.name + ".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(session.to_dict(), f, ensure_ascii=False, indent=2)
+            os.replace(tmp, path)
 
     def list_sessions(self) -> list[Session]:
         """列出所有会话，按更新时间倒序"""

@@ -5,7 +5,7 @@ import {
   Modal, Form, Input, Select, Radio, Space, Typography, Alert,
 } from 'antd';
 import { Briefcase, Target, BookOpen, MessageSquare } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const { Text } = Typography;
 
@@ -39,10 +39,10 @@ export default function NewSessionModal({
 
   useEffect(() => {
     if (!open) return;
-    axios.get('/api/personas').then((res) => {
+    api.get('/api/personas', { skipErrorToast: true }).then((res) => {
       setPersonas((res.data.personas || []).filter((p: Persona) => p.id !== 'examiner'));
     }).catch(() => {});
-    axios.get('/api/collections').then((res) => {
+    api.get('/api/collections', { skipErrorToast: true }).then((res) => {
       setCollections(res.data.collections || []);
     }).catch(() => {});
     form.resetFields();
@@ -64,11 +64,11 @@ export default function NewSessionModal({
         payload.topic = values.topic;
         payload.title = `模拟面试 · ${values.target_position} · ${values.topic}`;
       }
-      const res = await axios.post('/api/sessions', payload);
+      const res = await api.post('/api/sessions', payload);
       onCreated(res.data);
       form.resetFields();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || '创建会话失败');
+    } catch {
+      // 拦截器已统一弹出错误提示（含 422 detail 数组的格式化）
     } finally {
       setLoading(false);
     }

@@ -19,8 +19,9 @@ def _safe_data_dir(dirname: str) -> str:
     raw = str(BACKEND_DIR / dirname)
     if raw.isascii():
         return raw
-    # 回退到用户目录
+    # 回退到用户目录，并显式告知实际数据位置
     safe = Path.home() / ".dx-rag" / dirname
+    print(f"[Config] 项目路径包含非 ASCII 字符，数据目录回退到: {safe}")
     return str(safe)
 
 

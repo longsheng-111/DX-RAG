@@ -10,6 +10,9 @@ from openai import OpenAI
 
 from app.core.config import settings
 
+# LLM 调用默认超时（秒），防止 API 无响应时请求无限挂起
+LLM_TIMEOUT = 60.0
+
 
 class TokenCost(dict):
     """Token 消耗数据结构，便于直接序列化为 JSON"""
@@ -46,11 +49,12 @@ class TokenTracker:
     def __init__(self, client: Optional[OpenAI] = None):
         self.client = client
 
-    def chat_completion(self, **kwargs):
-        """调用 LLM 并返回 (response, token_cost)"""
+    def chat_completion(self, timeout: float = LLM_TIMEOUT, **kwargs):
+        """调用 LLM 并返回 (response, token_cost)，默认 60s 超时"""
         if self.client is None:
             raise RuntimeError("TokenTracker 未配置 OpenAI client")
 
+        kwargs.setdefault("timeout", timeout)
         response = self.client.chat.completions.create(**kwargs)
 
         usage = response.usage
@@ -82,7 +86,8 @@ def estimate_tokens(text: str) -> int:
     """
     粗略估算 Token 数。
     中文按 1 字 ≈ 1 token，英文按空格分词 ≈ 1 token。
-    实际 DeepSeek 对中文的切分会更细，这里做保守估算。
+    基础估算会漏算标点、数字与代码符号，系统性偏低，
+    因此统一乘以 1.3 安全系数，宁可高估不可低估。
     """
     if not text:
         return 0
@@ -92,7 +97,12 @@ def estimate_tokens(text: str) -> int:
     # 英文单词数（按空格分）
     en_words = len([w for w in text.split() if any(c.isascii() for c in w)])
 
-    return cn_chars + en_words
+    return int((cn_chars + en_words) * 1.3)
+
+
+def estimate_messages_tokens(messages: list[dict]) -> int:
+    """估算一组消息（或压缩历史记录）的总 Token 数"""
+    return sum(estimate_tokens(m.get("content", "")) for m in messages)
 
 
 def get_token_budget() -> dict:
@@ -105,14 +115,14 @@ def get_token_budget() -> dict:
     }
 
 
-def should_compress_context(session_total: int) -> bool:
-    """判断是否需要压缩上下文"""
+def should_compress_context(context_tokens: int) -> bool:
+    """判断当前上下文估算 Token 数是否达到压缩阈值"""
     budget = get_token_budget()
     threshold = budget["compression_threshold"]
     max_total = budget["max_total_tokens_per_session"]
     if max_total <= 0:
         return False
-    return session_total / max_total >= threshold
+    return context_tokens / max_total >= threshold
 
 
 def compress_messages_with_llm(
@@ -155,7 +165,7 @@ def compress_session_context(
 ) -> TokenCost:
     """
     压缩会话上下文。
-    策略：保留最近 4 轮完整对话，对更早消息生成摘要。
+    策略：保留最近 4 条完整消息，对更早消息生成摘要。
     如果 LLM 不可用，直接丢弃更早消息。
     """
     total_cost = TokenCost()

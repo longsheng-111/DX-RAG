@@ -2,6 +2,7 @@
 DX-RAG FastAPI 应用入口
 """
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # 将 backend/ 加入 sys.path（支持直接 `python app/main.py` 运行）
@@ -14,12 +15,23 @@ from app.core.config import settings
 from app.api.routes import router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期：启动时初始化目录，关闭时无需额外清理"""
+    settings.ensure_dirs()
+    print(f"[Startup] 应用启动: {settings.app_name}")
+    print(f"[Startup] 上传目录: {settings.upload_dir}")
+    print(f"[Startup] 向量数据库: {settings.vector_persist_dir}")
+    yield
+
+
 def create_app() -> FastAPI:
     """创建并配置 FastAPI 应用"""
     app = FastAPI(
         title=settings.app_name,
         description="DX-RAG 知识库问答系统 API",
         version="1.0.0",
+        lifespan=lifespan,
     )
 
     # CORS 中间件
@@ -33,14 +45,6 @@ def create_app() -> FastAPI:
 
     # 注册路由
     app.include_router(router)
-
-    # 启动事件
-    @app.on_event("startup")
-    async def startup():
-        settings.ensure_dirs()
-        print(f"[Startup] 应用启动: {settings.app_name}")
-        print(f"[Startup] 上传目录: {settings.upload_dir}")
-        print(f"[Startup] 向量数据库: {settings.vector_persist_dir}")
 
     return app
 

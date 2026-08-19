@@ -4,6 +4,7 @@
 """
 import os
 import json
+import re
 import uuid
 import shutil
 from pathlib import Path
@@ -75,24 +76,50 @@ def _collections_index_path() -> Path:
     return _get_store_dir() / "_collections.json"
 
 
-def _load_collections_index() -> dict:
-    """加载知识库索引"""
-    path = _collections_index_path()
-    if path.exists():
+def _atomic_write_json(path: Path, data: dict) -> None:
+    """原子写入 JSON：先写临时文件再 os.replace，避免进程中断留下半个文件"""
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)
+
+
+def _read_json_tolerant(path: Path, default: dict) -> dict:
+    """读取 JSON 文件；内容损坏时备份为 .corrupt 并按空数据处理，不再裸抛"""
+    if not path.exists():
+        return default
+    try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {}
+    except json.JSONDecodeError:
+        corrupt = path.with_name(path.name + ".corrupt")
+        os.replace(path, corrupt)
+        print(f"[VectorStore] JSON 文件损坏，已备份为 {corrupt}，按空数据重建: {path}")
+        return default
+
+
+def _load_collections_index() -> dict:
+    """加载知识库索引"""
+    return _read_json_tolerant(_collections_index_path(), {})
 
 
 def _save_collections_index(data: dict) -> None:
     """保存知识库索引"""
-    with open(_collections_index_path(), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(_collections_index_path(), data)
+
+
+# 知识库名称白名单：中英文字符、数字、下划线、连字符（与 routes.py 一致）
+_COLLECTION_NAME_RE = re.compile(r'^[\w一-鿿-]+$')
 
 
 def _collection_dir(collection_name: str) -> Path:
-    """某个知识库的数据目录"""
-    d = _get_store_dir() / collection_name
+    """某个知识库的数据目录（名称白名单 + 路径前缀校验，防路径穿越）"""
+    if not collection_name or not _COLLECTION_NAME_RE.match(collection_name):
+        raise ValueError(f"非法知识库名称: {collection_name!r}")
+    base = _get_store_dir().resolve()
+    d = (base / collection_name).resolve()
+    if not str(d).startswith(str(base)):
+        raise ValueError(f"知识库路径越界: {collection_name!r}")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -107,8 +134,8 @@ def _meta_path(collection_name: str) -> Path:
     return _collection_dir(collection_name) / "metadata.json"
 
 
-def _load_faiss_index(collection_name: str) -> Optional[faiss.Index]:
-    """加载 FAISS 索引，不存在则返回 None"""
+def _read_faiss_index(collection_name: str) -> Optional[faiss.Index]:
+    """直接读取 FAISS 索引文件，不存在则返回 None（不做一致性校验）"""
     path = _faiss_path(collection_name)
     if path.exists():
         return faiss.read_index(str(path))
@@ -122,17 +149,40 @@ def _save_faiss_index(collection_name: str, index: faiss.Index) -> None:
 
 def _load_metadata(collection_name: str) -> dict:
     """加载元数据（documents、file 信息等）"""
-    path = _meta_path(collection_name)
-    if path.exists():
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"documents": [], "metadatas": [], "ids": []}
+    return _read_json_tolerant(
+        _meta_path(collection_name),
+        {"documents": [], "metadatas": [], "ids": []},
+    )
 
 
 def _save_metadata(collection_name: str, data: dict) -> None:
     """保存元数据"""
-    with open(_meta_path(collection_name), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(_meta_path(collection_name), data)
+
+
+def _rebuild_index_from_metadata(collection_name: str, meta: dict) -> faiss.Index:
+    """从元数据全量重建 FAISS 索引（需重新编码，仅在索引与元数据不一致时使用）"""
+    dim = get_embed_model().get_sentence_embedding_dimension()
+    index = faiss.IndexFlatIP(dim)
+    if meta["documents"]:
+        index.add(encode_texts(meta["documents"]))
+    _save_faiss_index(collection_name, index)
+    return index
+
+
+def _load_faiss_index(collection_name: str) -> Optional[faiss.Index]:
+    """加载 FAISS 索引，不存在则返回 None；索引与元数据数量不一致时自动重建"""
+    index = _read_faiss_index(collection_name)
+    if index is None:
+        return None
+    meta = _load_metadata(collection_name)
+    if index.ntotal != len(meta["ids"]):
+        print(
+            f"[VectorStore] 索引与元数据不一致 (ntotal={index.ntotal}, "
+            f"ids={len(meta['ids'])})，已从元数据重建: {collection_name}"
+        )
+        index = _rebuild_index_from_metadata(collection_name, meta)
+    return index
 
 
 def _get_or_create_index(collection_name: str) -> faiss.Index:
@@ -190,6 +240,8 @@ def delete_collection(name: str) -> dict:
     if col_dir.exists():
         shutil.rmtree(col_dir)
 
+    _invalidate_search_cache(name)
+
     return {"name": name, "status": "deleted"}
 
 
@@ -210,6 +262,9 @@ def rename_collection(old_name: str, new_name: str) -> dict:
     # 更新索引
     idx[new_name] = idx.pop(old_name)
     _save_collections_index(idx)
+
+    _invalidate_search_cache(old_name)
+    _invalidate_search_cache(new_name)
 
     return {"old_name": old_name, "new_name": new_name, "status": "renamed"}
 
@@ -246,6 +301,9 @@ def add_texts(
     meta["ids"].extend(ids)
     _save_metadata(collection_name, meta)
 
+    # 索引与元数据均已落盘，使检索缓存失效
+    _invalidate_search_cache(collection_name)
+
     # 确保知识库已注册
     idx = _load_collections_index()
     if collection_name not in idx:
@@ -255,17 +313,49 @@ def add_texts(
     return len(texts)
 
 
+# ============================================================
+#  检索缓存
+# ============================================================
+
+# collection_name -> (index, metadata, index.faiss 的 mtime_ns)
+# 仅当索引文件的 mtime 变化时才重读磁盘，避免每次检索都全量加载
+_search_cache: dict[str, tuple[faiss.Index, dict, int]] = {}
+
+
+def _invalidate_search_cache(collection_name: str) -> None:
+    """使指定知识库的检索缓存失效"""
+    _search_cache.pop(collection_name, None)
+
+
+def _get_cached_search_data(collection_name: str) -> tuple[Optional[faiss.Index], dict]:
+    """获取检索用的索引和元数据，优先命中 mtime 缓存"""
+    path = _faiss_path(collection_name)
+    if not path.exists():
+        _invalidate_search_cache(collection_name)
+        return None, {"documents": [], "metadatas": [], "ids": []}
+
+    cached = _search_cache.get(collection_name)
+    if cached is not None and cached[2] == path.stat().st_mtime_ns:
+        return cached[0], cached[1]
+
+    index = _load_faiss_index(collection_name)  # 含一致性校验，必要时自动重建
+    meta = _load_metadata(collection_name)
+    if index is not None:
+        # 一致性重建可能改写了索引文件，重新取 mtime 再缓存
+        _search_cache[collection_name] = (index, meta, path.stat().st_mtime_ns)
+    return index, meta
+
+
 def vector_search(
     query: str,
     collection_name: str,
     top_k: int = 10,
 ) -> list[tuple[str, str, float]]:
-    """向量相似度检索"""
-    index = _load_faiss_index(collection_name)
+    """向量相似度检索（索引与元数据走 mtime 缓存，避免每次全量读盘）"""
+    index, meta = _get_cached_search_data(collection_name)
     if index is None or index.ntotal == 0:
         return []
 
-    meta = _load_metadata(collection_name)
     if not meta["ids"]:
         return []
 
@@ -279,6 +369,8 @@ def vector_search(
     results = []
     for dist, idx in zip(distances[0], indices[0]):
         if idx < 0 or idx >= len(meta["documents"]):
+            # 正常不会越界：索引加载时已校验 ntotal 与元数据数量一致，
+            # 此处仅为防御性兜底
             continue
         file_name = meta["metadatas"][idx].get("file_name", "")
         content = meta["documents"][idx]
@@ -331,12 +423,23 @@ def delete_file(file_name: str, collection_name: str) -> dict:
     new_index = faiss.IndexFlatIP(dim)
 
     if keep_indices:
-        # 重新编码保留的文本
-        keep_texts = [meta["documents"][i] for i in keep_indices]
-        embeddings = encode_texts(keep_texts)
-        new_index.add(embeddings)
+        # 优先从旧索引 reconstruct 保留项的向量，省去重新跑 embedding；
+        # 旧索引缺失、与元数据不一致或不支持 reconstruct 时回退到重新编码
+        old_index = _read_faiss_index(collection_name)
+        rebuilt = False
+        if old_index is not None and old_index.ntotal == len(meta["ids"]):
+            try:
+                vectors = np.vstack([old_index.reconstruct(i) for i in keep_indices])
+                new_index.add(vectors)
+                rebuilt = True
+            except (NotImplementedError, RuntimeError):
+                rebuilt = False
+        if not rebuilt:
+            keep_texts = [meta["documents"][i] for i in keep_indices]
+            new_index.add(encode_texts(keep_texts))
 
     _save_faiss_index(collection_name, new_index)
+    _invalidate_search_cache(collection_name)
 
     # 更新元数据
     new_meta = {

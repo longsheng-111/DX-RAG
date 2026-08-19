@@ -66,7 +66,11 @@ export default function SessionPanel({
       await axios.delete(`/api/sessions/${sessionId}`);
       const remaining = sessions.filter((s) => s.session_id !== sessionId);
       if (sessionId === activeSessionId) {
-        remaining.length > 0 ? onSelectSession(remaining[0]) : onCreateSession();
+        if (remaining.length > 0) {
+          onSelectSession(remaining[0]);
+        } else {
+          onCreateSession();
+        }
       }
       fetchSessions();
     } catch { /* ignore */ }
@@ -88,6 +92,8 @@ export default function SessionPanel({
   const formatTime = (iso: string) => {
     try {
       const d = new Date(iso);
+      // 非法时间字符串会产生 Invalid Date，回退显示原始字符串
+      if (isNaN(d.getTime())) return iso || '--';
       return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     } catch { return iso; }
   };

@@ -17,6 +17,7 @@ MAX_FOLLOW_UP = 2
 COPY_PASTE_MIN_CHUNK_LEN = 20
 COPY_PASTE_SUBSTRING_LEN = 30
 REPEAT_ANSWER_THRESHOLD = 0.85
+SIMILARITY_SUBSTRING_MIN_LEN = 50
 
 
 EXAMINER_SYSTEM_PROMPT = """你是一位经验丰富的{{target_position}}技术面试官，正在面试{{topic}}方向候选人。
@@ -48,6 +49,7 @@ EXAMINER_SYSTEM_PROMPT = """你是一位经验丰富的{{target_position}}技术
   2. 原理题（考察底层机制）
   3. 对比题（考察辨析能力）
   4. 场景题（考察实战经验）
+  5. 综合题（考察综合运用与权衡能力）
 - 难度由浅入深：第 1 题基础，第 5 题综合深入
 - 每题后必须说明考察点
 - 提出后停止输出，等待候选人回答，不要自问自答，不要泄露答案
@@ -116,7 +118,8 @@ def _text_similarity(a: str, b: str) -> float:
     na, nb = _normalize(a), _normalize(b)
     if not na or not nb:
         return 0.0
-    if na in nb or nb in na:
+    # 子串规则仅在较短串足够长时生效，避免短回答被误判为完全重复
+    if min(len(na), len(nb)) >= SIMILARITY_SUBSTRING_MIN_LEN and (na in nb or nb in na):
         return 1.0
     set_a, set_b = set(na), set(nb)
     inter = len(set_a & set_b)
@@ -139,22 +142,27 @@ def _build_context(chunks: list[tuple[str, str, float]]) -> str:
     return "\n---\n".join(selected)
 
 
-def _parse_evaluation(answer_text: str) -> dict:
-    score_match = re.search(r"【评分】\s*(\d+(?:\.\d+)?)", answer_text)
-    score = float(score_match.group(1)) if score_match else 5.0
-    return {
-        "raw": answer_text,
-        "score": min(max(score, 0), 10),
-        "has_next_question": "【下一题】" in answer_text,
-    }
-
-
 def _parse_summary(text: str) -> dict:
     total_match = re.search(r"【总体评分】\s*(\d+(?:\.\d+)?)", text)
     return {
         "raw": text,
         "total_score": float(total_match.group(1)) if total_match else 0,
     }
+
+
+def _local_summary(scores: list[dict], weak_points: list[str]) -> dict:
+    """模型调用失败时本地拼接的简易总结：各题均分（折算百分制）+ 薄弱环节列表"""
+    valid = [s["score"] for s in scores if isinstance(s.get("score"), (int, float))]
+    avg = sum(valid) / len(valid) if valid else 0.0
+    total_score = round(avg * 10, 1)  # 单题满分 10 分，折算为百分制
+    weak_text = "、".join(weak_points[:3]) if weak_points else "无明确记录"
+    raw = (
+        f"【总体评分】{total_score}\n"
+        f"【能力画像】共作答 {len(scores)} 题，平均得分 {round(avg, 1)}/10。\n"
+        f"【薄弱环节】{weak_text}\n"
+        f"【复习建议】针对上述薄弱环节查漏补缺后重新参加面试。"
+    )
+    return {"raw": raw, "total_score": total_score}
 
 
 def detect_cheating(
@@ -245,11 +253,16 @@ def generate_question(
     thread: list[dict],
     question_index: int,
     follow_up_count: int = 0,
-) -> tuple[str, list[str], list[str], TokenCost]:
-    """生成下一道面试题或追问，同时输出参考答案要点"""
+) -> tuple[Optional[str], list[str], list[str], TokenCost]:
+    """
+    生成下一道面试题或追问，同时输出参考答案要点。
+
+    失败约定：LLM 未配置、调用异常或解析失败时返回 (None, [], [], TokenCost)，
+    调用方需将 None 视为失败（返回 502），不得把报错文案当作题目落盘。
+    """
     client = _create_client()
     if not client:
-        return "未配置 DEEPSEEK_API_KEY，请在 .env 中设置 API 密钥", [], [], TokenCost()
+        return None, [], [], TokenCost()
 
     context = _build_context(context_chunks)
     history_text = _format_thread(thread)
@@ -278,7 +291,7 @@ def generate_question(
             f"\n\n当前是第 {question_index} 题，建议题型：{suggested_type}。"
             "请只输出当前要考察的题目、考察点和参考答案要点，不要输出答案。格式：\n"
             "【题目】...\n"
-            "【类型】概念题/原理题/对比题/场景题\n"
+            "【类型】概念题/原理题/对比题/场景题/综合题\n"
             "【考察点】...\n"
             "【参考答案要点】\n1. ...\n2. ...\n3. ..."
         )
@@ -295,11 +308,11 @@ def generate_question(
             max_tokens=settings.max_output_tokens,
         )
     except Exception as e:
-        return f"调用模型生成题目失败: {str(e)}", [], [], TokenCost()
+        return None, [], [], TokenCost()
 
     text = response.choices[0].message.content or ""
     if not text.strip():
-        return "模型返回空内容，请重试", [], [], cost
+        return None, [], [], cost
 
     reference_points = _extract_reference_points(text)
 
@@ -317,7 +330,7 @@ def generate_question(
 
     expectations = [s.strip() for s in e_match.group(1).split("、")] if e_match else []
     if not question:
-        return "未能从模型输出中解析出题目，请重试", [], [], cost
+        return None, [], [], cost
     return question, expectations, reference_points, cost
 
 
@@ -383,8 +396,14 @@ def evaluate_answer(
     context_chunks: list[tuple[str, str, float]],
     thread: list[dict],
     follow_up_count: int,
+    question_index: int = 1,
 ) -> tuple[dict, TokenCost]:
-    """基于参考答案要点对候选人回答做结构化评分"""
+    """
+    基于参考答案要点对候选人回答做结构化评分。
+
+    失败约定：API 未配置或调用异常时返回 ({"error": 错误信息}, TokenCost())，
+    成功时返回 (_parse_structured_evaluation 结果 dict, TokenCost)。
+    """
     client = _create_client()
     if not client:
         return {"error": "未配置 API KEY"}, TokenCost()
@@ -399,7 +418,7 @@ def evaluate_answer(
         .replace("{{topic}}", topic)
         .replace("{{context}}", context)
         .replace("{{history}}", history_text)
-        .replace("{{question_index}}", str(len(thread) // 2))
+        .replace("{{question_index}}", str(question_index))
         .replace("{{follow_up_count}}", str(follow_up_count))
         .replace("{{max_follow_up}}", str(MAX_FOLLOW_UP))
         .replace("{{max_questions}}", str(MAX_QUESTIONS))
@@ -452,7 +471,7 @@ def generate_summary(
     scores: list[dict],
     weak_points: list[str],
 ) -> tuple[dict, TokenCost]:
-    """生成面试总结，结合高频遗漏点"""
+    """生成面试总结，结合高频遗漏点；模型调用失败时返回本地拼接的简易总结"""
     client = _create_client()
     if not client:
         return {"error": "未配置 API KEY"}, TokenCost()
@@ -475,15 +494,21 @@ def generate_summary(
         "【复习建议】具体可执行的建议"
     )
 
-    tracker = TokenTracker(client)
-    response, cost = tracker.chat_completion(
-        model="deepseek-chat",
-        messages=[
-            {"role": "system", "content": "你是技术面试官，输出面试总结。"},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3,
-        max_tokens=settings.max_output_tokens,
-    )
+    try:
+        tracker = TokenTracker(client)
+        response, cost = tracker.chat_completion(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "你是技术面试官，输出面试总结。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=settings.max_output_tokens,
+        )
+    except Exception as e:
+        # 模型调用失败时返回本地拼接的简易总结，保证面试流程闭环
+        print(f"[Examiner] 生成面试总结失败，改用本地简易总结: {e}")
+        return _local_summary(scores, weak_points), TokenCost()
+
     text = response.choices[0].message.content or ""
     return _parse_summary(text), cost

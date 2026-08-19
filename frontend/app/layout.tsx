@@ -64,10 +64,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [selectedCollection]);
 
   const handleSessionUpdate = useCallback((sessionId: string, persona: string, totalTokens: number) => {
+    // 只接受当前会话的更新，防止切换会话后迟到的响应覆盖新会话状态
+    if (sessionId !== activeSessionId) return;
     setActivePersona(persona);
     setSessionTotal(totalTokens);
     setRefreshSessions((n) => n + 1);
-  }, []);
+  }, [activeSessionId]);
 
   const renderContent = () => {
     if (activeMenu === 'qa') {

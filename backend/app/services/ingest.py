@@ -1,9 +1,10 @@
 """
 文件处理与文本切片模块
 """
+from __future__ import annotations
+
 import base64
 import re
-import shutil
 from pathlib import Path
 from typing import List
 
@@ -28,7 +29,8 @@ def read_text_from_file(file_path: Path) -> str:
 
     # ---- 纯文本类 ----
     if suffix in {".txt", ".md", ".csv", ".json", ".log"}:
-        for enc in ("utf-8", "utf-16", "gbk"):
+        # utf-16 排在 gbk 之后：偶数长度的 GBK 文件能被 utf-16 "成功" 解码成乱码
+        for enc in ("utf-8", "gbk", "utf-16"):
             try:
                 return file_path.read_text(encoding=enc)
             except (UnicodeDecodeError, UnicodeError):
@@ -38,13 +40,31 @@ def read_text_from_file(file_path: Path) -> str:
     # ---- PDF ----
     if suffix == ".pdf":
         reader = PdfReader(str(file_path))
-        text = "\n".join(
-            (page.extract_text() or "") for page in reader.pages
-        )
-        # 如果提取不到文字（图片型PDF），走视觉模型
-        if not text.strip():
-            text = extract_text_with_qwen_vl(str(file_path))
-        return text
+        pages_text = [(page.extract_text() or "") for page in reader.pages]
+        # 按页判断：去除空白后不足 20 字符的页视为图片页，单独走视觉模型 OCR
+        ocr_pages = [
+            i for i, t in enumerate(pages_text)
+            if len(re.sub(r"\s+", "", t)) < 20
+        ]
+        if ocr_pages:
+            try:
+                ocr_texts, failed_pages = extract_text_with_qwen_vl(
+                    str(file_path), ocr_pages
+                )
+            except Exception as e:
+                # OCR 整体不可用（如未配置密钥）：保留文本提取结果，不静默丢弃
+                ocr_texts, failed_pages = {}, list(ocr_pages)
+                print(f"[PDF] {file_path.name} OCR 调用失败: {e}")
+            for i in ocr_pages:
+                if i in ocr_texts:
+                    pages_text[i] = ocr_texts[i]
+            if failed_pages:
+                page_nums = [p + 1 for p in failed_pages]
+                print(
+                    f"[PDF] {file_path.name} 共 {len(failed_pages)} 页 OCR 失败"
+                    f"（第 {page_nums} 页），已保留原文本提取结果"
+                )
+        return "\n".join(pages_text)
 
     # ---- Word ----
     if suffix == ".docx":
@@ -71,10 +91,14 @@ def read_text_from_file(file_path: Path) -> str:
 #  图片型 PDF 处理（通义千问视觉模型）
 # ============================================================
 
-def extract_text_with_qwen_vl(pdf_path: str) -> str:
+def extract_text_with_qwen_vl(
+    pdf_path: str, page_numbers: list[int] | None = None
+) -> tuple[dict[int, str], list[int]]:
     """
-    使用 Qwen3.7-Plus 视觉模型识别图片型 PDF 中的文字。
+    使用 qwen-plus 视觉模型识别图片型 PDF 中的文字。
     逐页渲染为 JPEG → base64 → 调用 OpenAI 兼容 API。
+    page_numbers 为 None 时处理全部页面，否则只处理指定页（页码均为 0 基）。
+    返回 ({页码: 识别文本}, OCR 失败的页码列表)。
     """
     from openai import OpenAI
 
@@ -86,10 +110,12 @@ def extract_text_with_qwen_vl(pdf_path: str) -> str:
 
     client = OpenAI(api_key=api_key, base_url=base_url)
     doc = fitz.open(pdf_path)
-    full_text: list[str] = []
+    page_texts: dict[int, str] = {}
+    failed_pages: list[int] = []
 
     try:
-        for page_num in range(len(doc)):
+        target_pages = page_numbers if page_numbers is not None else range(len(doc))
+        for page_num in target_pages:
             page = doc[page_num]
 
             # 页面渲染为 JPEG
@@ -97,7 +123,7 @@ def extract_text_with_qwen_vl(pdf_path: str) -> str:
             img_bytes = pix.tobytes("jpg")
             img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
-            # 调用 Qwen3.7-Plus 视觉模型 (OpenAI 兼容)
+            # 调用 qwen-plus 视觉模型 (OpenAI 兼容)
             try:
                 response = client.chat.completions.create(
                     model="qwen-plus",
@@ -118,14 +144,15 @@ def extract_text_with_qwen_vl(pdf_path: str) -> str:
                 )
                 content = response.choices[0].message.content
                 if content:
-                    full_text.append(content)
+                    page_texts[page_num] = content
             except Exception as e:
+                failed_pages.append(page_num)
                 print(f"[Qwen-VL] 第 {page_num + 1} 页失败: {e}")
 
     finally:
         doc.close()
 
-    return "\n\n".join(full_text).strip()
+    return page_texts, failed_pages
 
 
 # ============================================================
@@ -246,9 +273,13 @@ def _split_recursive(text: str, separators: list[str], chunk_size: int, chunk_ov
         if len(candidate) <= chunk_size:
             current = candidate
         else:
-            # 当前 chunk 已满
+            # 当前 chunk 已满：flush，并从尾部截取 overlap 作为下一 chunk 的开头前缀
+            overlap_prefix = ""
             if current.strip():
                 chunks.append(current)
+                overlap_len = min(chunk_overlap, len(current) // 2)
+                if overlap_len > 0:
+                    overlap_prefix = current[-overlap_len:]
 
             # 处理当前段落
             if len(seg) > chunk_size:
@@ -264,6 +295,13 @@ def _split_recursive(text: str, separators: list[str], chunk_size: int, chunk_ov
                         if sub.strip():
                             chunks.append(sub)
                 current = ""
+            elif overlap_prefix and overlap_prefix != seg:
+                # 带 overlap 前缀重开；前缀不得等于整个 seg，加上前缀后仍超长时
+                # 退化为无前缀，避免 chunk 内容原地打转无法增长
+                seeded = (
+                    f"{overlap_prefix}{sep}{seg}" if sep else overlap_prefix + seg
+                )
+                current = seeded if len(seeded) <= chunk_size else seg
             else:
                 current = seg
 

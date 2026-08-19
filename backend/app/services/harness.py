@@ -4,6 +4,14 @@ Harness：Agent 执行环境的约束、调度和兜底
 - 调度（Orchestration）：定义 RAG 执行 DAG
 - 约束（Guardrails）：输入过滤、工具白名单、Token 预算、超时控制
 - 兜底（Fallback）：检索为空、LLM 超时、连续出错时的降级策略
+
+接线现状（如实说明）：
+- guard_input / fallback_error：被 qa.py 调用
+- check_token_budget：已在 routes.py 接线——/api/chat 按会话累计 Token、
+  /api/query 按请求自带 history 的估算量判定，超预算直接返回 429
+- LLM 超时控制不在本模块：统一由 token_tracker.chat_completion 注入 60s timeout
+- guard_tool / run_with_timeout 已实现但未被外部调用
+- orchestrate_rag 为预留的 DAG 调度实现，尚未接线
 """
 import re
 import time
@@ -23,8 +31,9 @@ from app.services.token_tracker import (
 ALLOWED_TOOLS = {"knowledge_search"}
 
 # 简单敏感词过滤（可按需扩展）
+# 注意不能用 \b：Python re 中中文字符也是单词字符，\b 对中文边界判定会失效
 SENSITIVE_PATTERNS = [
-    re.compile(r"\b(密码|passwd|password)\s*[:=]", re.IGNORECASE),
+    re.compile(r"(?:密码|passwd|password)\s*[:=]", re.IGNORECASE),
 ]
 
 
@@ -151,7 +160,8 @@ def run_with_timeout(
         finally:
             result["done"] = True
 
-    thread = threading.Thread(target=target)
+    # daemon 线程：超时返回后即使工作线程仍挂起，也不阻塞进程退出
+    thread = threading.Thread(target=target, daemon=True)
     thread.start()
     thread.join(timeout=timeout)
 

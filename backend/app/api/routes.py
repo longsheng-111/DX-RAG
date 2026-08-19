@@ -1,16 +1,17 @@
 """
 API 路由定义 - 文件上传、知识问答、知识库管理、文件管理
 """
+import asyncio
 import logging
 import os
 import re
 
 logger = logging.getLogger(__name__)
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.persona import (
@@ -24,8 +25,10 @@ from app.core.session import session_manager
 from app.services.token_tracker import (
     compress_session_context,
     should_compress_context,
+    estimate_messages_tokens,
     TokenCost,
 )
+from app.services.harness import check_token_budget
 from app.services.feedback import feedback_store
 from app.core.vector_store import (
     list_collections,
@@ -50,6 +53,17 @@ from app.services.examiner import (
 )
 
 router = APIRouter(prefix="/api")
+
+# 上传文件扩展名白名单（与 ingest 支持的格式一致）
+ALLOWED_UPLOAD_EXTENSIONS = {
+    ".txt", ".md", ".csv", ".json", ".log",
+    ".pdf", ".docx",
+    ".xlsx", ".xlsm", ".xltx", ".xltm",
+}
+
+# 上传文件大小上限（MB），可通过环境变量 MAX_UPLOAD_SIZE_MB 覆盖
+MAX_UPLOAD_SIZE_MB = int(os.environ.get("MAX_UPLOAD_SIZE_MB", "50"))
+MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # ---- 安全校验 ----
 
@@ -82,18 +96,18 @@ def _safe_file_path(file_name: str) -> Path:
 # ============================================================
 
 class QueryRequest(BaseModel):
-    question: str
-    top_k: int = 5
+    question: str = Field(max_length=2000)
+    top_k: int = Field(default=5, ge=1, le=50)
     collection_name: str = "knowledge_chunks"
     history: list[dict] = []
 
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(max_length=2000)
     session_id: Optional[str] = None
     persona: str = "default"
     collection_name: Optional[str] = None
-    top_k: int = 5
+    top_k: int = Field(default=5, ge=1, le=50)
 
 
 class CreateSessionRequest(BaseModel):
@@ -127,19 +141,22 @@ class ExamStartRequest(BaseModel):
     target_position: Optional[str] = None
     topic: Optional[str] = None
     collection_name: Optional[str] = None
-    top_k: int = 5
+    top_k: int = Field(default=5, ge=1, le=50)
 
 
 class ExamNextRequest(BaseModel):
-    answer: str
-    top_k: int = 5
+    answer: str = ""
+    top_k: int = Field(default=5, ge=1, le=50)
+    # 显式动作：give_up=放弃作答（按"不知道"计 0 分），end=结束面试（跳过评分直接收尾）
+    # None 表示按 answer 正常作答
+    action: Optional[Literal["give_up", "end"]] = None
 
 
 class FeedbackRequest(BaseModel):
     session_id: str
     original_chunk_id: str
     target_chunk_id: str
-    type: str  # replace | inaccurate
+    type: Literal["replace", "inaccurate"]
     original_content: str = ""
     target_content: str = ""
     note: str = ""
@@ -160,6 +177,7 @@ async def health():
 
 @router.post("/upload")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     collection_name: str = Form(default="knowledge_chunks"),
 ):
@@ -167,36 +185,57 @@ async def upload_file(
     if not file.filename:
         raise HTTPException(status_code=400, detail="未选择文件")
 
+    # 扩展名白名单预检（与 ingest 支持的格式一致）
+    safe_name = Path(file.filename).name  # 去掉路径
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {suffix or '（无扩展名）'}")
+
+    # Content-Length 上限预检
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail=f"文件超过大小限制（{MAX_UPLOAD_SIZE_MB}MB）")
+
     # 校验知识库名称
     _validate_collection_name(collection_name, "知识库名称")
 
-    # 保存文件到 uploads 目录（安全文件名）
+    # 保存文件到 uploads 目录（同名文件直接覆盖，旧向量在入库前删除）
     settings.ensure_dirs()
-    safe_name = Path(file.filename).name  # 去掉路径
     dest_path = Path(settings.upload_dir) / safe_name
 
-    # 处理同名文件：添加序号
-    counter = 1
-    while dest_path.exists():
-        stem = Path(file.filename).stem
-        suffix = Path(file.filename).suffix
-        dest_path = Path(settings.upload_dir) / f"{stem}_{counter}{suffix}"
-        counter += 1
-
+    # 写盘循环内累计字节硬限制：Content-Length 预检可被 chunked 传输绕过，
+    # 超限立即中断、删除残留文件并返回 413
+    written = 0
     try:
         with open(dest_path, "wb") as buffer:
             while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                written += len(chunk)
+                if written > MAX_UPLOAD_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"文件超过大小限制（{MAX_UPLOAD_SIZE_MB}MB）",
+                    )
                 buffer.write(chunk)
+    except HTTPException:
+        dest_path.unlink(missing_ok=True)
+        raise
     except Exception as e:
         logger.exception("Failed to save uploaded file")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-    # 处理入库
+    # 处理入库；失败时清理已落盘的残留文件
     try:
+        # 同知识库已存在同名文件：先删旧向量，避免重复入库
+        existing_names = {f["file_name"] for f in get_files(collection_name)}
+        if safe_name in existing_names:
+            delete_file(safe_name, collection_name)
+
         result = process_file(str(dest_path), collection_name)
     except ValueError as e:
+        dest_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        dest_path.unlink(missing_ok=True)
         logger.exception("Failed to process uploaded file")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -217,6 +256,11 @@ async def query(req: QueryRequest):
     """知识库问答（兼容旧接口）"""
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
+
+    # Token 预算硬熔断：无会话接口按请求自带 history 的估算量判定
+    budget_error = check_token_budget(estimate_messages_tokens(req.history))
+    if budget_error:
+        raise HTTPException(status_code=429, detail=budget_error)
 
     try:
         result = qa_query(
@@ -327,6 +371,18 @@ async def delete_session_api(session_id: str):
     raise HTTPException(status_code=404, detail="会话不存在")
 
 
+@router.post("/sessions/{session_id}/clear")
+async def clear_session_api(session_id: str):
+    """清空会话的消息与压缩历史，保留会话本身及 persona / kb_id 配置"""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    session.messages = []
+    session.compressed_history = []
+    session_manager.save_session(session)
+    return {"status": "ok"}
+
+
 @router.put("/sessions/{session_id}/persona")
 async def switch_persona_api(session_id: str, req: SwitchPersonaRequest):
     """切换会话角色"""
@@ -427,20 +483,39 @@ async def chat(req: ChatRequest):
     if req.collection_name:
         session.kb_id = req.collection_name
 
-    # 3. 添加上次问答的 Token 到累计
-    # （用户消息的 token 在上一轮已经统计进 assistant 的 prompt 中）
+    # 3. Token 预算硬熔断：累计消耗超预算直接拒绝
+    budget_error = check_token_budget(session.total_tokens)
+    if budget_error:
+        raise HTTPException(status_code=429, detail=budget_error)
 
-    # 4. 上下文压缩：超过预算 60% 时触发
-    if should_compress_context(session.total_tokens):
+    # 4. 上下文压缩：按当前上下文估算 Token 数判定（而非累计消耗）；
+    #    压缩后记录水位，估算量未超过上次水位前不重复触发
+    context_tokens = estimate_messages_tokens(session.messages) + estimate_messages_tokens(
+        session.compressed_history
+    )
+    last_compress_level = next(
+        (
+            h.get("context_tokens", 0)
+            for h in reversed(session.compressed_history)
+            if h.get("type") == "compress_marker"
+        ),
+        0,
+    )
+    if should_compress_context(context_tokens) and context_tokens > last_compress_level:
         from openai import OpenAI
         client = None
         if settings.deepseek_api_key:
             client = OpenAI(
                 api_key=settings.deepseek_api_key,
                 base_url=settings.deepseek_base_url,
+                timeout=60.0,
             )
         compress_cost = compress_session_context(session, client)
         session.update_total_tokens(compress_cost.total)
+        session.compressed_history.append({
+            "type": "compress_marker",
+            "context_tokens": context_tokens,
+        })
 
     # 5. 添加用户消息
     session.add_message("user", req.question.strip())
@@ -454,7 +529,10 @@ async def chat(req: ChatRequest):
     # 7. 调用 QA
     system_prompt = get_persona_system_prompt(session.persona)
     try:
-        result = qa_query(
+        # qa_query 是同步函数（内含 LLM 调用与向量检索，秒级耗时），
+        # 直接调用会阻塞事件循环，扔进线程池执行让出调度权
+        result = await asyncio.to_thread(
+            qa_query,
             question=req.question,
             collection_name=session.kb_id,
             top_k=req.top_k,
@@ -466,7 +544,8 @@ async def chat(req: ChatRequest):
         logger.exception("Chat QA failed")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-    # 8. 添加助手消息并保存（同时保存来源和推理路径，便于页面刷新后恢复）
+    # 8. 添加助手消息并保存（add_message 会把本轮 token_cost 自动累加进 session.total_tokens，
+    #    同时保存来源和推理路径，便于页面刷新后恢复；此处无需再手动累加，否则会双倍计数）
     token_cost = result.get("token_cost", {})
     session.add_message(
         "assistant",
@@ -570,8 +649,9 @@ async def exam_start(req: ExamStartRequest):
         logger.exception("Failed to generate first exam question")
         raise HTTPException(status_code=500, detail=f"生成题目失败: {str(e)}")
 
+    # generate_question 失败约定返回 None：报错文案不得落盘为题目
     if not question:
-        raise HTTPException(status_code=500, detail="模型未返回有效题目")
+        raise HTTPException(status_code=502, detail="生成题目失败，请重试")
 
     session.exam_state = {
         "mode": "examiner",
@@ -592,7 +672,6 @@ async def exam_start(req: ExamStartRequest):
         "answer_cache": {},
     }
     session.add_message("assistant", question, token_cost=dict(cost))
-    session.update_total_tokens(cost.total)
     session_manager.save_session(session)
 
     return {
@@ -620,14 +699,55 @@ async def exam_next(session_id: str, req: ExamNextRequest):
     if not state.get("current_question"):
         raise HTTPException(status_code=400, detail="当前没有待回答的题目")
 
-    answer = req.answer.strip()
+    # action == "end"：显式结束面试，跳过反作弊与评分，直接生成总结收尾
+    if req.action == "end":
+        summary, summary_cost = generate_summary(
+            target_position=state["target_position"],
+            topic=state["topic"],
+            scores=state.get("scores", []),
+            weak_points=state.get("weak_points", []),
+        )
+        if "error" in summary:
+            # 总结生成失败时降级为占位文案，避免面试收尾直接崩溃
+            summary = {"raw": f"面试总结生成失败：{summary['error']}", "total_score": 0}
+        state["status"] = "finished"
+        state["summary"] = summary
+        session.add_message("assistant", summary["raw"], token_cost=dict(summary_cost))
+        session.exam_state = state
+        session_manager.save_session(session)
+        return {
+            "session_id": session_id,
+            "status": state["status"],
+            "question_index": state["question_index"],
+            "current_question": state["current_question"],
+            "current_expectations": state["current_expectations"],
+            "reference_points": state.get("reference_points", []),
+            "follow_up_count": state["follow_up_count"],
+            "evaluation": None,
+            "summary": summary,
+            "scores": state["scores"],
+            "weak_points": state.get("weak_points", []),
+            "token_cost": dict(summary_cost),
+        }
+
+    # give_up 记为"不知道"按 0 分作答；其余按 answer 正常作答
+    if req.action == "give_up":
+        answer = "不知道"
+    else:
+        answer = req.answer.strip()
     if not answer:
         raise HTTPException(status_code=400, detail="回答不能为空")
 
-    # 检索参考资料
-    from app.services.retrieval import AdvancedRetriever
-    retriever = AdvancedRetriever(state["collection_name"])
-    chunks = retriever.hybrid_search(state["topic"], top_k=req.top_k)
+    # 检索参考资料：query 由 topic 与当前题目拼接；结果按 query 缓存到 exam_state，
+    # 同一道题的追问期间不重复全量检索
+    retrieval_query = f"{state['topic']} {state['current_question']}"
+    retrieval_cache = state.setdefault("retrieval_cache", {})
+    chunks = retrieval_cache.get(retrieval_query)
+    if chunks is None:
+        from app.services.retrieval import AdvancedRetriever
+        retriever = AdvancedRetriever(state["collection_name"])
+        chunks = retriever.hybrid_search(retrieval_query, top_k=req.top_k)
+        retrieval_cache[retrieval_query] = chunks
 
     # 反作弊检测（基于同一题历史答案 + 参考资料原文）
     previous_answers = [
@@ -673,8 +793,15 @@ async def exam_next(session_id: str, req: ExamNextRequest):
             context_chunks=chunks,
             thread=state.get("current_thread", []),
             follow_up_count=state["follow_up_count"],
+            question_index=state["question_index"],
         )
-        set_cached_evaluation(state, state["current_question"], answer, eval_result)
+        # 仅评分成功才写缓存，避免失败结果（{'error': ...}）投毒缓存
+        if "error" not in eval_result:
+            set_cached_evaluation(state, state["current_question"], answer, eval_result)
+
+    # 评分失败：不记录线程与得分，直接返回 502，前端可提示重试
+    if "error" in eval_result:
+        raise HTTPException(status_code=502, detail=f"评分失败：{eval_result['error']}")
 
     # 记录当前线程
     state["current_thread"].append({"role": "user", "content": answer})
@@ -701,11 +828,8 @@ async def exam_next(session_id: str, req: ExamNextRequest):
         total_tokens=eval_cost.total,
     )
 
-    # 判断是否结束
-    should_finish = (
-        answer == "结束"
-        or state["question_index"] >= MAX_QUESTIONS
-    )
+    # 判断是否结束（action == "end" 已在上方提前收尾，不再匹配"结束"字面量）
+    should_finish = state["question_index"] >= MAX_QUESTIONS
 
     response_evaluation = eval_result if state["status"] != "finished" else None
     response_summary = None
@@ -717,6 +841,9 @@ async def exam_next(session_id: str, req: ExamNextRequest):
             scores=state["scores"],
             weak_points=state.get("weak_points", []),
         )
+        if "error" in summary:
+            # 总结生成失败时降级为占位文案，避免面试收尾直接崩溃
+            summary = {"raw": f"面试总结生成失败：{summary['error']}", "total_score": 0}
         total_cost = TokenCost(
             prompt_tokens=total_cost.prompt + summary_cost.prompt,
             completion_tokens=total_cost.completion + summary_cost.completion,
@@ -739,6 +866,9 @@ async def exam_next(session_id: str, req: ExamNextRequest):
             question_index=state["question_index"],
             follow_up_count=state["follow_up_count"],
         )
+        if question is None:
+            # 出题失败：此处 raise 时会话尚未保存，已写入的评分/消息均不落盘
+            raise HTTPException(status_code=502, detail="生成题目失败，请重试")
         total_cost = TokenCost(
             prompt_tokens=total_cost.prompt + q_cost.prompt,
             completion_tokens=total_cost.completion + q_cost.completion,
@@ -763,6 +893,9 @@ async def exam_next(session_id: str, req: ExamNextRequest):
             question_index=state["question_index"],
             follow_up_count=0,
         )
+        if question is None:
+            # 出题失败：此处 raise 时会话尚未保存，已写入的评分/消息均不落盘
+            raise HTTPException(status_code=502, detail="生成题目失败，请重试")
         total_cost = TokenCost(
             prompt_tokens=total_cost.prompt + q_cost.prompt,
             completion_tokens=total_cost.completion + q_cost.completion,
@@ -775,7 +908,6 @@ async def exam_next(session_id: str, req: ExamNextRequest):
         session.add_message("assistant", question, token_cost=dict(q_cost))
 
     session.exam_state = state
-    session.update_total_tokens(total_cost.total)
     session_manager.save_session(session)
 
     return {
@@ -825,7 +957,8 @@ async def get_collections():
     try:
         return {"collections": list_collections()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to list collections")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/collections")
@@ -838,7 +971,8 @@ async def create_collection_api(req: CreateCollectionRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to create collection")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/collections/{name}")
@@ -851,7 +985,8 @@ async def rename_collection_api(name: str, req: RenameCollectionRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to rename collection")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/collections/{name}")
@@ -862,7 +997,8 @@ async def delete_collection_api(name: str):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to delete collection")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================================
@@ -876,7 +1012,8 @@ async def list_files(collection_name: str = Query(default="knowledge_chunks")):
         files = get_files(collection_name)
         return {"files": files, "collection_name": collection_name}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to list files")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/files/{file_name:path}")
@@ -885,17 +1022,22 @@ async def delete_file_api(
     collection_name: str = Query(default="knowledge_chunks"),
 ):
     """删除知识库中的文件及向量数据"""
+    # 路径安全校验在 try 之外，HTTPException 原样向上抛
+    local_path = _safe_file_path(file_name)
+
     try:
         result = delete_file(file_name, collection_name)
-
-        # 同时尝试删除本地文件（安全路径校验）
-        local_path = _safe_file_path(file_name)
-        if local_path.exists():
-            os.remove(str(local_path))
-
-        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to delete file vectors")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+    # 同时删除本地文件；向量与本地文件都不存在时返回 404
+    if local_path.exists():
+        os.remove(str(local_path))
+    elif result.get("deleted_count", 0) == 0:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    return result
 
 
 @router.get("/files/{file_name:path}/preview")
@@ -919,7 +1061,8 @@ async def preview_file(
             "truncated": len(text) > 5000,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to preview file")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================================
@@ -943,4 +1086,5 @@ async def get_stats():
             "total_files": total_files,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Failed to get stats")
+        raise HTTPException(status_code=500, detail="Internal server error")

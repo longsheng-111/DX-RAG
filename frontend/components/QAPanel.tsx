@@ -28,6 +28,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
+import api, { formatApiError } from '@/lib/api';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -737,6 +738,11 @@ export default function QAPanel({
   const popupRef = useRef<HTMLDivElement>(null);
   const popupEnterTimer = useRef<NodeJS.Timeout | null>(null);
   const popupLeaveTimer = useRef<NodeJS.Timeout | null>(null);
+  // 进行中的问答请求，切换会话时 abort，避免旧回答串入新会话
+  const chatAbortRef = useRef<AbortController | null>(null);
+  // 镜像当前 sessionId，供异步回调比对请求发起时的会话
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   const fetchCollections = useCallback(async () => {
     try {
@@ -757,6 +763,10 @@ export default function QAPanel({
     setPinnedCitationId(undefined);
     setHoveredCiteIndex(null);
     setPopup({ visible: false, pinned: false, sourceId: null, citationNum: null, msgIdx: null, anchorEl: null });
+    // 会话切换（或组件卸载）时取消进行中的问答请求
+    return () => {
+      chatAbortRef.current?.abort();
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -922,11 +932,18 @@ export default function QAPanel({
     setSourceFilter('all');
     closePopup();
 
+    const requestSessionId = sessionId;
+    const controller = new AbortController();
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = controller;
+
     try {
-      const res = await axios.post('/api/chat', {
-        session_id: sessionId, question, top_k: 5,
+      const res = await api.post('/api/chat', {
+        session_id: requestSessionId, question, top_k: 5,
         persona: propsPersona, collection_name: collectionName,
-      });
+      }, { signal: controller.signal, skipErrorToast: true });
+      // 响应到达时会话已切换，丢弃旧会话的结果
+      if (requestSessionId !== sessionIdRef.current) return;
       const cost: TokenCost = res.data.token_cost;
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -937,16 +954,33 @@ export default function QAPanel({
         token_cost: cost,
       }]);
       setLastCost(cost);
-      onSessionUpdate(sessionId, res.data.persona, cost.session_total);
+      onSessionUpdate(requestSessionId, res.data.persona, cost.session_total);
     } catch (err: any) {
+      // 主动取消或会话已切换时静默丢弃，错误提示留在聊天气泡里
+      if (axios.isCancel(err) || requestSessionId !== sessionIdRef.current) return;
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: `请求失败：${err.response?.data?.detail || err.message}`,
+        content: `请求失败：${formatApiError(err)}`,
       }]);
-    } finally { setLoading(false); }
+    } finally {
+      // 只由最新一次请求复位 loading，避免旧请求误清新请求的 loading
+      if (chatAbortRef.current === controller) {
+        chatAbortRef.current = null;
+        setLoading(false);
+      }
+    }
   };
 
-  const handleClear = () => { setMessages([]); };
+  const handleClear = async () => {
+    if (!sessionId) return;
+    try {
+      await api.post(`/api/sessions/${sessionId}/clear`);
+      setMessages([]);
+      setFeedbackStamps({});
+    } catch {
+      // 拦截器已统一弹出错误提示，本地消息保持不动
+    }
+  };
 
   const handleDropReplace = useCallback((fromSourceId: string, toCitationNum: number) => {
     setFeedbackMsgIdx(messages.length - 1);
@@ -1038,7 +1072,8 @@ export default function QAPanel({
   };
 
   const budgetRatio = propsSessionTotal / SESSION_BUDGET;
-  const budgetColor = budgetRatio < 0.5 ? 'var(--brand)' : budgetRatio < 0.8 ? 'var(--cite-3)' : 'var(--brand)';
+  // 用量低 → 绿，中 → 黄，高 → 红
+  const budgetColor = budgetRatio < 0.5 ? 'var(--cite-3)' : budgetRatio < 0.8 ? 'var(--cite-4)' : 'var(--brand)';
   const tokenSegments = 20;
   const usedSegments = Math.min(Math.ceil(budgetRatio * tokenSegments), tokenSegments);
 

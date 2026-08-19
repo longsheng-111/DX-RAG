@@ -68,8 +68,8 @@ PERSONAS = {
 
 
 def get_persona(persona_id: str) -> dict:
-    """获取角色配置，不存在返回 default"""
-    return PERSONAS.get(persona_id, PERSONAS["default"])
+    """获取角色配置（返回拷贝，避免调用方修改全局模板），不存在返回 default"""
+    return dict(PERSONAS.get(persona_id, PERSONAS["default"]))
 
 
 def list_personas() -> list[dict]:

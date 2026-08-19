@@ -25,10 +25,20 @@ def _build_prompt(
 
     # 根据预算截断参考资料
     max_context_tokens = settings.max_input_tokens - settings.max_output_tokens - 500
+
+    # 历史对话限额为预算的 30%，超出时从最早的消息开始丢弃（至少保留最新一条）
+    max_history_tokens = int(max_context_tokens * 0.3)
+    selected_history: list[dict] = []
+    history_tokens = 0
+    for msg in reversed(history[-6:]):  # 最多保留最近6条
+        msg_tokens = estimate_tokens(msg.get("content", ""))
+        if history_tokens + msg_tokens > max_history_tokens and selected_history:
+            break
+        selected_history.insert(0, msg)
+        history_tokens += msg_tokens
+
     selected_chunks = []
-    current_tokens = estimate_tokens(question)
-    for history_msg in history[-6:]:
-        current_tokens += estimate_tokens(history_msg.get("content", ""))
+    current_tokens = estimate_tokens(question) + history_tokens
 
     for chunk in context_chunks:
         chunk_tokens = estimate_tokens(chunk)
@@ -44,9 +54,9 @@ def _build_prompt(
 
     # 历史对话
     history_text = ""
-    if history:
+    if selected_history:
         lines = []
-        for msg in history[-6:]:  # 最多保留最近6条
+        for msg in selected_history:
             role = "用户" if msg["role"] == "user" else "助手"
             lines.append(f"{role}: {msg['content']}")
         history_text = "\n".join(lines)
