@@ -20,5 +20,6 @@ RUN mkdir -p vector_db models uploads
 
 EXPOSE 8000
 
-# 启动时自动下载嵌入模型（如不存在）
-CMD ["sh", "-c", "python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer(\"BAAI/bge-small-zh-v1.5\")' 2>/dev/null; uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# 启动时自动下载嵌入模型（如不存在）；
+# STORAGE_BACKEND=postgres 时先跑 alembic 建表（幂等），避免首次启动在无表库上直接写入
+CMD ["sh", "-c", "python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer(\"BAAI/bge-small-zh-v1.5\")' 2>/dev/null; if [ \"$STORAGE_BACKEND\" = \"postgres\" ]; then alembic upgrade head; fi; uvicorn app.main:app --host 0.0.0.0 --port 8000"]

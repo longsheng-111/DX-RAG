@@ -17,3 +17,9 @@ aiofiles>=23.2.0
 langchain>=0.1.0
 langchain-text-splitters>=0.0.1
 rank-bm25>=0.2.2
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg2-binary>=2.9
+pgvector>=0.2
+# LangGraph：Python 3.9 兼容上限为 0.2.x（0.3+ 要求 Python>=3.10），锁定当前已验证版本
+langgraph==0.2.76

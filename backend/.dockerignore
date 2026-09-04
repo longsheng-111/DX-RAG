@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 venv/
 venv_new/
+venv_pg/
 .venv/
 
 # Data (体积巨大，不需要打入镜像)

@@ -23,7 +23,9 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
 from app.core.config import settings
-from app.core.vector_store import add_texts, create_collection, list_collections, get_vector_store
+# 走存储开关（app.core.storage），与 API/服务层同一入口：
+# STORAGE_BACKEND=postgres 时写入 DB，默认 file 时写入 FAISS 文件
+from app.core.storage import add_texts, create_collection, list_collections, get_vector_store
 from app.services.ingest import read_text_from_file, split_text
 
 
@@ -68,6 +70,9 @@ def ingest_file(file_path: Path, category: str, collection_name: str) -> dict:
     metadatas = [
         {
             "file_name": file_path.name,
+            # source 为应用内约定键（services/ingest.py 同款），postgres 后端会写入 File.storage_path；
+            # source_path 为脚本历史键，保留以兼容 file 后端已有数据的增量去重
+            "source": str(file_path),
             "source_path": str(file_path),
             "category": category,
             "chunk_index": i,
@@ -92,18 +97,29 @@ def ensure_collection(collection_name: str) -> None:
         print(f"[Ingest] 已自动创建知识库: {collection_name}")
 
 
-def get_existing_source_paths(collection_name: str) -> set[str]:
-    """获取知识库中已存在的文件 source_path 集合"""
+def get_existing_entries(collection_name: str) -> tuple[set[str], set[str]]:
+    """获取知识库中已存在文件的 (路径集合, 文件名集合)，用于增量导入去重。
+
+    - 路径取自 metadatas 的 source_path（脚本历史键）与 source（应用约定键），
+      file 后端两者都可能存在，postgres 后端只有 source（File.storage_path）
+    - 文件名作为兜底：postgres 后端对同库同名文件有 UNIQUE 约束，重入库会直接报错，
+      提前按名跳过可避免整批导入因此失败
+    """
     try:
         data = get_vector_store(collection_name)
-        paths = set()
+        paths: set[str] = set()
+        names: set[str] = set()
         for m in data.get("metadatas", []) or []:
-            source_path = m.get("source_path")
-            if source_path:
-                paths.add(source_path)
-        return paths
+            for key in ("source_path", "source"):
+                value = m.get(key)
+                if value:
+                    paths.add(value)
+            file_name = m.get("file_name")
+            if file_name:
+                names.add(file_name)
+        return paths, names
     except Exception:
-        return set()
+        return set(), set()
 
 
 def main():
@@ -137,12 +153,13 @@ def main():
         print(f"  - {path} -> category={category}")
     print()
 
-    # 获取已存在的文件路径（用于增量导入去重）
-    existing_paths = set()
+    # 获取已存在的文件路径与文件名（用于增量导入去重）
+    existing_paths: set[str] = set()
+    existing_names: set[str] = set()
     if not args.force:
-        existing_paths = get_existing_source_paths(args.collection)
-        if existing_paths:
-            print(f"[Ingest] 知识库中已有 {len(existing_paths)} 个文件，将自动跳过")
+        existing_paths, existing_names = get_existing_entries(args.collection)
+        if existing_paths or existing_names:
+            print(f"[Ingest] 知识库中已有 {len(existing_names)} 个文件，将自动跳过")
 
     start_time = time.time()
     stats = defaultdict(lambda: {"files": 0, "chunks": 0})
@@ -156,8 +173,8 @@ def main():
         for file_path in files:
             file_key = str(file_path)
 
-            # 去重检查
-            if not args.force and file_key in existing_paths:
+            # 去重检查：路径命中（精确增量）或文件名命中（postgres 同名约束兜底）
+            if not args.force and (file_key in existing_paths or file_path.name in existing_names):
                 skipped_files.append(file_key)
                 print(f"  [SKIP] {file_path.name} -> 已存在")
                 continue

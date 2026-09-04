@@ -1,11 +1,13 @@
 # DX-RAG · 作业本上的 RAG 冒险
 
+> 仓库地址：https://github.com/longsheng-111/RAG-TEST
+
 一个以「暖纸作业本 × 复古 RPG」为视觉世界观的知识库问答系统：把你的课程资料、面试八股文放进书包（知识库），然后向它提问、纠错、存档，甚至开一场 AI 考官的模拟面试。检索增强生成（RAG）负责找线索，DeepSeek 负责写答案。
 
 ## 主要玩法（已实现）
 
-- **知识问答**：混合检索（BM25 + 向量召回 → RRF 融合 → BGE 重排序），ReAct Agent 最多 3 轮改写查询补检；回答附引用角标与推理路径，可点开查看原文片段。
-- **会话存档**：多会话并行，首次提问自动生成标题，Token 用量逐条统计，超预算自动压缩上下文；一键导出 Markdown。
+- **知识问答**：混合检索（BM25 + 向量双路召回 → RRF(k=60) 融合 → BGE 向量精排按 0.7×余弦 + 0.3×归一化 RRF 加权融合 → 0.65 阈值过滤），ReAct Agent 按 0.75 充分性阈值判定、最多 3 轮改写查询补检；回答附引用角标与推理路径，可点开查看原文片段。
+- **会话存档**：多会话并行，首次提问自动生成标题，Token 用量逐条统计；会话累计超预算（默认 5 万）直接 429 熔断，上下文估算超 60% 自动压缩历史；一键导出 Markdown。
 - **Persona 角色**：内置 5 位 NPC——通用面试官、前端面试官、后端面试官、面试辅导官、技术考官，各自绑定默认知识库与专属提示词。
 - **引用替换与纠错反馈**：对回答引用的片段可「替换引用」或「标记不准确」，反馈落盘后会作为事实修正约束注入该会话的后续回答。
 - **模拟面试（考官模式）**：AI 基于知识库出题（共 5 题）→ 逐题评分并指出得分点命中情况 → 低于 7 分自动追问（每题最多 2 次）→ 结束后生成总评；带复制粘贴反作弊检测。
@@ -18,12 +20,12 @@
 | 前端 | Next.js 14.2.24 + React 18 + Ant Design 5.22.7 + react-markdown 9 + framer-motion + axios |
 | 后端 | FastAPI 0.104 + FAISS（faiss-cpu 1.7，向量检索）+ sentence-transformers 2.x + rank-bm25 |
 | 文件处理 | PyMuPDF 1.26 / PyPDF2 / python-docx / openpyxl |
-| 嵌入模型 | BAAI/bge-small-zh-v1.5（384 维，默认经 hf-mirror 或本地 ModelScope 缓存加载） |
+| 嵌入模型 | BAAI/bge-small-zh-v1.5（512 维，默认经 hf-mirror 或本地 ModelScope 缓存加载） |
 | LLM | DeepSeek `deepseek-chat`（OpenAI 兼容接口） |
 | 视觉模型 | 通义千问 `qwen-plus`（DashScope OpenAI 兼容接口，处理图片型 PDF） |
 | 数据存储 | 本地 JSON 落盘 + FAISS 索引文件，无外部数据库 |
 
-> 注：项目已从 ChromaDB 迁移至 FAISS，仓库中个别旧文档/脚本仍残留 `chroma_*` 命名（见「后续规划 · 工程化」）。
+> 注：项目已从 ChromaDB 迁移至 FAISS，代码与 `docker-compose.yml` 均已切换为 `vector_*`/`VECTOR_*` 命名；仅个别历史文档中保留 `chroma_*` 字样作为演进记录。
 
 ## 开局指南（双端上手）
 
@@ -111,17 +113,17 @@ npm run dev
 
 首次问答前，嵌入模型（约百 MB）会自动下载；国内网络默认走 `HF_ENDPOINT=https://hf-mirror.com`，也会优先复用 `~/.cache/modelscope/BAAI/bge-small-zh-v1.5` 本地缓存。
 
-> Docker 说明：`docker-compose.yml` 尚存，但其卷名与环境变量仍是 FAISS 迁移前的 `chroma_*` 配置，暂未同步更新，目前建议用上述脚本方式启动（待修复，见「后续规划 · 工程化」）。
+> Docker 说明：`docker-compose.yml` 已完成 FAISS 化（卷名 `vector_data`、环境变量 `VECTOR_PERSIST_DIR` 等，并补挂了会话数据卷），`docker compose up -d` 可直接拉起前后端；首次启动需下载嵌入模型，健康检查已带 300s 宽限期。
 
 ## 冒险地图（项目结构）
 
 ```
-RAG-TEST/
+DX-RAG/
 ├── backend/                        # FastAPI 后端
 │   ├── app/
 │   │   ├── main.py                 # 应用入口（CORS、路由注册、启动初始化）
 │   │   ├── api/
-│   │   │   └── routes.py           # API 路由（24 个端点，含请求校验）
+│   │   │   └── routes.py           # API 路由（25 个端点，含请求校验）
 │   │   ├── core/
 │   │   │   ├── config.py           # 配置管理（pydantic-settings 读 .env）
 │   │   │   ├── vector_store.py     # FAISS 索引 + JSON 元数据的读写
@@ -130,7 +132,7 @@ RAG-TEST/
 │   │   ├── services/
 │   │   │   ├── qa.py               # 问答主链路（prompt 构建、token 预算、反馈注入）
 │   │   │   ├── agent.py            # ReAct 检索 Agent（思考→检索→改写，最多 3 轮）
-│   │   │   ├── retrieval.py        # 混合检索（BM25 + 向量 + RRF + BGE 重排序）
+│   │   │   ├── retrieval.py        # 混合检索（BM25 + 向量双路召回 + RRF 融合 + 向量精排加权融合）
 │   │   │   ├── examiner.py         # 考官模式（出题/评分/追问/总结/反作弊）
 │   │   │   ├── feedback.py         # 引用纠错反馈的存储与提示词注入
 │   │   │   ├── ingest.py           # 文件解析、清洗、切片、图片型 PDF OCR
@@ -159,7 +161,7 @@ RAG-TEST/
 ├── docs/                           # 体检报告、Mac 开发笔记、汇报材料
 ├── .env.example                    # 环境变量模板
 ├── start.sh / start.bat            # 双端一键启动脚本
-└── docker-compose.yml              # 待随 FAISS 迁移更新
+└── docker-compose.yml              # 双端一键部署（已完成 FAISS 化）
 ```
 
 ## 存档结构（数据存储）
@@ -185,11 +187,11 @@ backend/app/vector_db/
 
 **3. 原始文件**
 
-- `backend/app/uploads/`：上传的原始文件，同名自动加序号；删除文件时同步清理。
+- `backend/app/uploads/`：上传的原始文件，同名文件直接覆盖（旧向量在入库前删除）；删除文件时同步清理。
 
 ## API 一览
 
-共 24 个端点，完整定义以 `backend/app/api/routes.py` 为准：
+共 25 个端点，完整定义以 `backend/app/api/routes.py` 为准：
 
 | 分组 | 端点 | 方法 | 功能 |
 |------|------|------|------|
@@ -199,13 +201,14 @@ backend/app/vector_db/
 | 问答 | `/api/chat` | POST | 会话化问答（推荐） |
 | 会话 | `/api/sessions` | GET / POST | 列出 / 创建会话 |
 | 会话 | `/api/sessions/{id}` | GET / DELETE | 会话详情 / 删除 |
+| 会话 | `/api/sessions/{id}/clear` | POST | 清空会话消息与压缩历史（保留会话与配置） |
 | 会话 | `/api/sessions/{id}/persona` | PUT | 切换角色 |
 | 会话 | `/api/sessions/{id}/title` | PUT | 改标题 |
 | 会话 | `/api/sessions/{id}/export` | GET | 导出 Markdown |
 | 角色 | `/api/personas` | GET | 角色列表 |
 | 反馈 | `/api/feedback` | POST | 提交引用纠错反馈 |
 | 面试 | `/api/exam/start` | POST | 开始模拟面试 |
-| 面试 | `/api/exam/{id}/next` | POST | 提交回答，进入评分/追问/下一题/总结 |
+| 面试 | `/api/exam/{id}/next` | POST | 提交回答，进入评分/追问/下一题/总结（支持 `action: give_up\|end` 显式动作） |
 | 面试 | `/api/exam/{id}` | GET | 获取面试状态 |
 | 知识库 | `/api/collections` | GET / POST | 列出 / 创建知识库 |
 | 知识库 | `/api/collections/{name}` | PUT / DELETE | 重命名 / 删除知识库 |
@@ -240,8 +243,8 @@ backend/app/vector_db/
 ### 工程化
 
 - **完整测试流程建设**：分三层推进——先做后端 API 冒烟（24 个端点的健康检查/问答/上传主路径），再做检索质量回归（固定题库断言引用命中），最后补前端关键流程（建会话→提问→点引用→导出）。CI 以 Windows + macOS 双端 matrix 运行。流程骨架与端点用例清单已写入 `docs/TESTING.md`；框架选型已有推荐（后端 pytest + TestClient，前端 Playwright e2e 为主），引入新依赖仍在待议中。
-- **数据访问层抽象与数据库迁移**：当前 JSON + FAISS 的直读直写散布在 `core/` 与 `services/`，计划先抽象出 repository 接口隔离存储细节。触发迁移到数据库（先 SQLite、再评估 Postgres）的条件：出现并发写冲突、单 JSON 文件体积失控、或需要跨会话查询与权限边界（分享/协作功能前置）。
-- **双端 CI 与其他欠账**：`docker-compose.yml` 的 `chroma_*` 残留更新、`start.bat` 无 venv 隔离、`.env.example` 历史键名清理，随工程化一并处理。
+- **数据访问层抽象与数据库迁移**：阶段 1 已完成——存储接口经 `backend/app/core/storage.py` 统一收口，新增 PostgreSQL + pgvector 后端（`backend/app/db/`，接口与文件版逐字兼容），`STORAGE_BACKEND` 环境变量整体切换（默认仍为 `file`，本机零负担）；配套 alembic 初始迁移与幂等数据迁移脚本（`backend/scripts/migrate_to_pg.py`，FAISS 向量 reconstruct 导出、零丢失校验）。设计与决策见 `docs/LangGraph重构设计.md`（决策 1：PG + pgvector，不经 SQLite 过渡）。
+- **双端 CI 与其他欠账**：`start.bat` 无 venv 隔离、`.env.example` 历史键名清理，随工程化一并处理。（`docker-compose.yml` 的 FAISS 化、Token 预算熔断与 LLM 60s 超时、`scipy>=1.11` 的 Python 3.12 兼容均已完成。）
 
 ## 常见问题
 

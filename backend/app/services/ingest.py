@@ -320,7 +320,7 @@ def process_file(file_path: str, collection_name: str) -> dict:
     完整文件处理流水线：读取 → 切片 → 嵌入 → 入库
     返回处理的 chunk 信息
     """
-    from app.core.vector_store import add_texts
+    from app.core.storage import add_texts
 
     path = Path(file_path)
     if not path.exists():

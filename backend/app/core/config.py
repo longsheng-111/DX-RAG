@@ -83,6 +83,17 @@ class Settings(BaseSettings):
     # ---- 会话数据 ----
     session_dir: str = _safe_data_dir("data/sessions")
 
+    # ---- 数据库（阶段 1：PostgreSQL + pgvector） ----
+    # SQLAlchemy 连接串；本机测试可用 sqlite:///<绝对路径> 指向临时文件
+    database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/dxrag"
+    # 存储后端：file=现有文件存储（默认，行为不变）；postgres=数据库存储（docker-compose 显式覆盖）
+    storage_backend: str = "file"
+
+    # ---- QA 引擎（阶段 2：QA LangGraph 化） ----
+    # legacy=agent.py 手写 ReAct 循环（默认，双跑验证通过前不动默认行为）；
+    # graph=graphs/qa_graph.py 的 LangGraph StateGraph 实现
+    qa_engine: str = "legacy"
+
     # ---- 嵌入模型 ----
     embed_model: str = "BAAI/bge-small-zh-v1.5"
 

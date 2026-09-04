@@ -21,7 +21,7 @@ from app.core.persona import (
     get_persona_system_prompt,
     validate_persona,
 )
-from app.core.session import session_manager
+from app.core.storage import session_manager
 from app.services.token_tracker import (
     compress_session_context,
     should_compress_context,
@@ -29,8 +29,9 @@ from app.services.token_tracker import (
     TokenCost,
 )
 from app.services.harness import check_token_budget
-from app.services.feedback import feedback_store
-from app.core.vector_store import (
+# session_manager / feedback_store / 向量函数统一经 storage 开关分派（STORAGE_BACKEND）
+from app.core.storage import feedback_store
+from app.core.storage import (
     list_collections,
     create_collection,
     delete_collection,
@@ -992,6 +993,11 @@ async def rename_collection_api(name: str, req: RenameCollectionRequest):
 @router.delete("/collections/{name}")
 async def delete_collection_api(name: str):
     """删除知识库"""
+    # TESTING.md 裁决①：删除不存在的知识库统一返回 404。
+    # 路由层预检使两种后端行为一致：file 版 delete_collection 对不存在的库
+    # 静默成功（200），postgres 版抛 ValueError；预检后两者都先命中 404。
+    if not any(c["name"] == name for c in list_collections()):
+        raise HTTPException(status_code=404, detail=f"知识库 '{name}' 不存在")
     try:
         return delete_collection(name)
     except ValueError as e:

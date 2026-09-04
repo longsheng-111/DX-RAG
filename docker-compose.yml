@@ -18,9 +18,15 @@ services:
       - SESSION_DIR=/app/data/sessions
       - UPLOAD_DIR=/app/uploads
       - EMBED_MODEL=BAAI/bge-small-zh-v1.5
+      # 阶段 1：数据库存储（compose 中显式覆盖默认的 file 后端）
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/dxrag
+      - STORAGE_BACKEND=postgres
       # 模型缓存持久化：容器内下载走 HF 镜像端点（vector_store.py:14-15），HF_HOME 为关键项
       - MODELSCOPE_CACHE=/app/models
       - HF_HOME=/app/models/hf
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -48,7 +54,36 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # PostgreSQL 16 + pgvector（阶段 1：数据库化）
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dx-rag-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=dxrag
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dxrag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis（阶段 4 任务队列/缓存用，先备着）
+  redis:
+    image: redis:7-alpine
+    container_name: dx-rag-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
 volumes:
+  pg_data:
+    driver: local
   vector_data:
     driver: local
   model_cache:

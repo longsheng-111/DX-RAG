@@ -7,6 +7,7 @@ __pycache__/
 venv/
 backend/venv/
 backend/venv_new/
+backend/venv_pg/
 
 # Build outputs
 .next/
@@ -40,3 +41,9 @@ backend/app/data/
 # Python
 *.log
 .pytest_cache/
+
+# Smoke/dual-run 运行时产物（脚本与验收报告入库，数据不入库）
+.smoke2/data/
+
+# Next.js 构建缓存
+frontend/tsconfig.tsbuildinfo
