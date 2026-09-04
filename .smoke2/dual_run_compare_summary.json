@@ -1,0 +1,2779 @@
+{
+  "thresholds": {
+    "sources_jaccard_min": 0.6,
+    "answer_ratio_min": 0.5
+  },
+  "paired": 50,
+  "consistent": 29,
+  "overall_rate": 0.58,
+  "by_category": {
+    "backend_bagu": {
+      "total": 18,
+      "consistent": 8,
+      "rate": 0.4444
+    },
+    "frontend_bagu": {
+      "total": 18,
+      "consistent": 10,
+      "rate": 0.5556
+    },
+    "general": {
+      "total": 14,
+      "consistent": 11,
+      "rate": 0.7857
+    }
+  },
+  "inconsistent_qids": [
+    1,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    16,
+    20,
+    21,
+    22,
+    23,
+    24,
+    27,
+    28,
+    30,
+    31,
+    32,
+    43,
+    45,
+    48
+  ],
+  "pairs": [
+    {
+      "qid": 1,
+      "category": "frontend_bagu",
+      "question": "Vue 2 是如何实现响应式的？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4513,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 是如何实现响应式的？",
+          "hits": 1,
+          "top_score": 0.7544,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 是如何实现响应式的？",
+          "hits": 1,
+          "top_score": 0.7544,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "Vue 2 的响应式实现基于 **Object.defineProperty** 方法[^1^]。\n\n具体来说，Vue 2 在初始化数据时，会遍历 data 对象中的每个属性，使用 `Object.defineProperty` 为这些属性定义 getter 和 setter。当属性被读取时，getter 会收集依赖（即记录哪些组件或副作用函数依赖该属性）；当属性被修改时，setter 会触发依赖更新，从而通知相关视图重新渲染。\n\n这种实现方式的**核心特点**包括：\n- **逐属性劫持**：需要递归遍历对象的所有属性，为每个属性单独定义响应式。\n- **无法检测新增/删除属性**：由于是预先",
+      "graph_answer_head": "Vue 2 的响应式实现基于 **`Object.defineProperty`** 方法[^1^]。\n\n### 核心机制\n- **数据劫持**：Vue 2 在初始化时，会遍历 `data` 对象中的所有属性，并使用 `Object.defineProperty` 将它们转换为 **getter/setter**。\n- **依赖收集**：当组件渲染或计算属性读取某个属性时，会触发对应的 getter，此时 Vue 会将该属性的依赖（如组件 watcher）记录下来。\n- **派发更新**：当属性值被修改时，会触发 setter，Vue 会通知所有依赖该属性的 watcher 重新执行，从而更新"
+    },
+    {
+      "qid": 2,
+      "category": "frontend_bagu",
+      "question": "Vue2 的响应式原理是什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6091,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue2 的响应式原理是什么？",
+          "hits": 1,
+          "top_score": 0.7315,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue2 响应式原理 Object.defineProperty 实现详解",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue2 响应式原理 Object.defineProperty 实现详解",
+          "hits": 1,
+          "top_score": 0.807,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue2 的响应式原理是什么？",
+          "hits": 1,
+          "top_score": 0.7315,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue2 Object.defineProperty 响应式原理 依赖收集 发布订阅",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue2 Object.defineProperty 响应式原理 依赖收集 发布订阅",
+          "hits": 1,
+          "top_score": 0.7705,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Vue 2 的响应式原理\n\nVue 2 的响应式系统基于 **`Object.defineProperty`** 实现[^1^]。\n\n#### 核心机制\n- **数据劫持**：通过 `Object.defineProperty` 对组件 `data` 中的每个属性进行拦截，重写其 `getter` 和 `setter`。\n- **依赖收集**：在 `getter` 中记录当前组件的 `Watcher`（观察者），建立属性与依赖的映射关系。\n- **派发更新**：在 `setter` 中触发依赖，通知对应的 `Watcher` 重新渲染视图。\n\n#### 关键限制\n- **无法检测对象属",
+      "graph_answer_head": "### Vue 2 响应式原理\n\n**核心机制**：Vue 2 通过 **`Object.defineProperty`** 实现响应式[^1^]。\n\n#### 实现要点\n- **数据劫持**：遍历 `data` 对象的所有属性，使用 `Object.defineProperty` 将其转换为 `getter`/`setter`。\n- **依赖收集**：在 `getter` 中收集当前组件的 `Watcher`（观察者），建立属性与依赖的映射关系。\n- **派发更新**：在 `setter` 中触发依赖，通知关联的 `Watcher` 重新渲染视图。\n\n#### 局限性\n- 无法检测**对象属"
+    },
+    {
+      "qid": 3,
+      "category": "frontend_bagu",
+      "question": "Vue 2 用哪个 API 实现数据响应式？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.5107,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 用哪个 API 实现数据响应式？",
+          "hits": 1,
+          "top_score": 0.7545,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 用哪个 API 实现数据响应式？",
+          "hits": 1,
+          "top_score": 0.7545,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "Vue 2 使用 **`Object.defineProperty`** 实现数据响应式[^1^]。\n\n- 该 API 通过拦截对象属性的 `get` 和 `set` 操作，在数据被读取或修改时触发依赖收集与更新。\n- 这是 Vue 2 响应式系统的核心实现方式。",
+      "graph_answer_head": "### Vue 2 响应式实现 API\n\nVue 2 使用 **`Object.defineProperty`** 实现数据响应式 [^1^]。\n\n#### 核心说明\n- **作用**：通过劫持对象属性的 `getter` 和 `setter`，在属性被读取或修改时触发依赖收集与更新通知。\n- **限制**：该 API 无法直接监听**新增属性**或**删除属性**，因此 Vue 2 提供了 `Vue.set` / `this.$set` 等辅助方法解决此问题。\n\n> 对比：Vue 3 改用 **`Proxy`** 实现响应式，可完整监听对象属性的增删改 [^1^]。"
+    },
+    {
+      "qid": 4,
+      "category": "frontend_bagu",
+      "question": "Object.defineProperty 在 Vue 2 中起什么作用？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8453,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Object.defineProperty 在 Vue 2 中起什么作用？",
+          "hits": 1,
+          "top_score": 0.6826,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Object.defineProperty 在 Vue 2 响应式原理中的作用",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Object.defineProperty 在 Vue 2 响应式原理中的作用",
+          "hits": 1,
+          "top_score": 0.7852,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Object.defineProperty 在 Vue 2 中起什么作用？",
+          "hits": 1,
+          "top_score": 0.6826,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Object.defineProperty Vue 2 响应式原理 作用",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Object.defineProperty Vue 2 响应式原理 作用",
+          "hits": 1,
+          "top_score": 0.789,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**Object.defineProperty 在 Vue 2 中用于实现响应式系统**[^1^]。\n\n具体来说，Vue 2 通过 `Object.defineProperty` 对数据对象的属性进行拦截，在属性被读取（get）或修改（set）时触发依赖收集和更新通知，从而使视图能够自动响应数据变化。这是 Vue 2 响应式原理的核心机制。\n\n> 注意：参考资料仅提供了这一概括性说明，未包含更详细的实现细节（如递归遍历、数组监听限制等）。如需深入了解，建议查阅 Vue 2 官方文档或源码。",
+      "graph_answer_head": "根据参考资料，**Object.defineProperty 在 Vue 2 中用于实现响应式系统**[^1^]。\n\n具体来说，Vue 2 通过 `Object.defineProperty` 对数据对象的属性进行劫持（拦截），在属性被读取（get）或修改（set）时触发相应的依赖收集与更新通知，从而让视图能够自动响应数据变化。这是 Vue 2 响应式原理的核心机制[^1^]。\n\n需要注意的是，参考资料仅提供了这一概括性说明，未涉及 `Object.defineProperty` 的具体实现细节（如数组监听、属性新增/删除的限制等）。如需更深入的信息，建议查阅 Vue 2 官方文档或相关源码分"
+    },
+    {
+      "qid": 5,
+      "category": "frontend_bagu",
+      "question": "Vue 3 的响应式是怎么实现的？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8701,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 的响应式是怎么实现的？",
+          "hits": 1,
+          "top_score": 0.7438,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 3 响应式原理 Proxy 实现机制",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 3 响应式原理 Proxy 实现机制",
+          "hits": 1,
+          "top_score": 0.7747,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 的响应式是怎么实现的？",
+          "hits": 1,
+          "top_score": 0.7438,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 3 响应式原理 Proxy 实现详解",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 3 响应式原理 Proxy 实现详解",
+          "hits": 1,
+          "top_score": 0.7884,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**Vue 3 的响应式是通过 Proxy 实现的**[^1^]。  \n\n具体来说，Vue 3 使用 **Proxy** 来代理对象，从而拦截对对象属性的读取、写入、删除等操作，实现响应式追踪和更新。这与 Vue 2 使用 `Object.defineProperty` 的方式不同[^1^]。  \n\n不过，参考资料仅提供了这一核心结论，未包含 Proxy 实现的具体细节（如 `reactive`、`ref`、依赖收集、触发更新等机制）。如需更深入的解释，建议查阅官方文档或其他资料。",
+      "graph_answer_head": "根据参考资料，**Vue 3 的响应式是通过 Proxy 实现的**[^1^]。\n\n具体来说，Vue 3 使用 **Proxy** 来代理对象，从而拦截对对象属性的读取、赋值、删除等操作，实现响应式追踪和触发更新。这与 Vue 2 使用 `Object.defineProperty` 的方式不同。\n\n不过，参考资料仅提供了这一核心结论，未涉及 Proxy 实现的具体细节（如依赖收集、触发更新的流程等）。如需更深入的解释，建议查阅 Vue 3 官方文档或相关源码分析。"
+    },
+    {
+      "qid": 6,
+      "category": "frontend_bagu",
+      "question": "Vue3 用什么实现响应式？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3338,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue3 用什么实现响应式？",
+          "hits": 1,
+          "top_score": 0.751,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue3 用什么实现响应式？",
+          "hits": 1,
+          "top_score": 0.751,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Vue 3 响应式实现\n\n**Vue 3 使用 `Proxy` 实现响应式**，取代了 Vue 2 中的 `Object.defineProperty`[^1^]。\n\n#### 核心要点\n- **实现方式**：Vue 3 通过 `Proxy` 对对象进行代理，拦截属性的读取、赋值、删除等操作，从而触发依赖收集与更新[^1^]。\n- **优势**：相比 Vue 2，`Proxy` 支持**动态新增属性**、**删除属性**以及**数组索引/长度变化**的响应式监听，无需像 Vue 2 那样额外调用 `Vue.set` 或 `Vue.delete`。\n\n#### 对比说明\n| 版本 | 实",
+      "graph_answer_head": "### Vue 3 响应式实现\n\n**Vue 3 使用 `Proxy` 实现响应式** [^1^]。\n\n与 Vue 2 的 `Object.defineProperty` 相比，`Proxy` 具有以下优势：\n\n- **支持更多操作**：可拦截 `get`、`set`、`deleteProperty`、`has` 等操作，覆盖更全面。\n- **性能更好**：无需递归遍历对象属性，而是按需代理，初始化更快。\n- **支持动态新增属性**：新增或删除属性时也能触发响应式更新，无需像 Vue 2 那样使用 `Vue.set` 或 `Vue.delete`。\n\n> 注意：`Proxy` 无法兼容 IE"
+    },
+    {
+      "qid": 7,
+      "category": "frontend_bagu",
+      "question": "Vue 3 响应式原理里的 Proxy 是做什么的？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3313,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 响应式原理里的 Proxy 是做什么的？",
+          "hits": 1,
+          "top_score": 0.7695,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 响应式原理里的 Proxy 是做什么的？",
+          "hits": 1,
+          "top_score": 0.7695,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**Vue 3 使用 Proxy 实现响应式**[^1^]。Proxy 是 JavaScript 内置对象，用于定义基本操作（如属性读取、赋值、删除等）的自定义行为。\n\n### Proxy 在 Vue 3 中的作用\n- **拦截对象操作**：Proxy 可以拦截对目标对象的读取、写入、删除等操作，从而在数据变化时触发更新。\n- **实现响应式追踪**：当组件访问响应式数据时，Vue 通过 Proxy 的 `get` 陷阱收集依赖；当数据被修改时，通过 `set` 陷阱通知依赖更新。\n- **支持动态新增/删除属性**：相比 Vue 2 的 `Object.defineProper",
+      "graph_answer_head": "### Vue 3 响应式原理中的 Proxy\n\n**Proxy** 是 Vue 3 实现响应式系统的核心机制，用于替代 Vue 2 中的 `Object.defineProperty`[^1^]。\n\n#### 主要作用\n- **拦截对象操作**：`Proxy` 可以拦截对目标对象的读取（`get`）、写入（`set`）、删除（`deleteProperty`）等操作，从而在数据变化时触发依赖更新。\n- **实现深层响应式**：与 Vue 2 需要递归遍历对象不同，`Proxy` 支持动态监听新增或删除的属性，无需预先定义，因此更高效且更全面。\n- **支持更多数据类型**：`Proxy` 不"
+    },
+    {
+      "qid": 8,
+      "category": "frontend_bagu",
+      "question": "Vue 2 和 Vue 3 的响应式实现有什么区别？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3156,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 和 Vue 3 的响应式实现有什么区别？",
+          "hits": 1,
+          "top_score": 0.7391,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 2 Object.defineProperty 与 Vue 3 Proxy 响应式实现区别",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 2 Object.defineProperty 与 Vue 3 Proxy 响应式实现区别",
+          "hits": 1,
+          "top_score": 0.816,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 2 和 Vue 3 的响应式实现有什么区别？",
+          "hits": 1,
+          "top_score": 0.7391,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 2 Object.defineProperty 与 Vue 3 Proxy 响应式原理区别",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 2 Object.defineProperty 与 Vue 3 Proxy 响应式原理区别",
+          "hits": 1,
+          "top_score": 0.8106,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "Vue 2 和 Vue 3 的响应式实现区别如下：\n\n- **Vue 2**：使用 **Object.defineProperty** 实现响应式。[^1^]\n- **Vue 3**：使用 **Proxy** 实现响应式。[^1^]\n\n这两种实现方式在底层机制上存在本质差异，但参考资料仅提供了这一核心区别，未涉及更详细的对比（如性能、支持范围、局限性等）。如需进一步了解，建议查阅官方文档或更完整的资料。",
+      "graph_answer_head": "# Vue 2 与 Vue 3 响应式实现的区别\n\n根据参考资料，两者的核心区别在于底层实现机制：\n\n- **Vue 2**：使用 `Object.defineProperty` 实现响应式 [^1^]\n- **Vue 3**：使用 `Proxy` 实现响应式 [^1^]\n\n## 主要差异说明\n\n### 1. 实现方式\n- **Vue 2** 通过 `Object.defineProperty` 对对象的属性进行劫持，需要遍历对象的所有属性并逐一重定义。\n- **Vue 3** 通过 `Proxy` 直接代理整个对象，无需遍历属性，拦截操作更全面。\n\n### 2. 能力差异（基于实现原理的推断"
+    },
+    {
+      "qid": 9,
+      "category": "frontend_bagu",
+      "question": "请介绍一下 Vue 的响应式原理。",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.2899,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "请介绍一下 Vue 的响应式原理。",
+          "hits": 1,
+          "top_score": 0.7794,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "请介绍一下 Vue 的响应式原理。",
+          "hits": 1,
+          "top_score": 0.7794,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Vue 响应式原理\n\nVue 的响应式系统是框架的核心特性之一，它让数据变化能够自动驱动视图更新。不同版本的 Vue 在实现方式上有所差异。\n\n#### Vue 2：基于 `Object.defineProperty`\n\nVue 2 通过 **`Object.defineProperty`** 来劫持对象的属性访问，实现响应式[^1^]。\n\n- **核心机制**：在初始化时，Vue 会遍历 `data` 对象的所有属性，使用 `Object.defineProperty` 将它们转换为 getter/setter。\n- **依赖收集**：当组件渲染或计算属性读取某个属性时，会触发 ge",
+      "graph_answer_head": "### Vue 响应式原理\n\nVue 的响应式系统是其核心特性之一，用于实现数据变化时视图自动更新。不同版本实现方式有所不同：\n\n- **Vue 2**：基于 **`Object.defineProperty`** 实现响应式[^1^]。\n- **Vue 3**：基于 **`Proxy`** 实现响应式[^1^]。\n\n#### 具体说明\n\n- **Vue 2 的 `Object.defineProperty`**：通过劫持对象的属性访问（`get`）和赋值（`set`），在数据被读取时收集依赖，在数据被修改时触发更新。但这种方式存在局限，例如无法直接监听数组索引变化和对象属性的新增/删除。\n-"
+    },
+    {
+      "qid": 10,
+      "category": "frontend_bagu",
+      "question": "Vue 组件有哪些生命周期钩子？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.9379,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件有哪些生命周期钩子？",
+          "hits": 1,
+          "top_score": 0.761,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件有哪些生命周期钩子？",
+          "hits": 1,
+          "top_score": 0.761,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，Vue 组件包含以下生命周期钩子[^1^]：\n\n- **created**：组件实例创建完成后触发。\n- **mounted**：组件挂载到 DOM 后触发。\n- **updated**：组件数据更新导致重新渲染后触发。\n- **destroyed**：组件销毁后触发。\n\n> 注：参考资料仅列出以上四个钩子，未涵盖 Vue 2/3 中的其他生命周期（如 beforeCreate、beforeMount、beforeUpdate、beforeDestroy 等）。如需完整列表，建议查阅官方文档。",
+      "graph_answer_head": "根据参考资料，Vue 组件包含以下生命周期钩子[^1^]：\n\n- **created**：实例创建完成后触发\n- **mounted**：挂载到 DOM 后触发\n- **updated**：数据更新导致视图重新渲染后触发\n- **destroyed**：实例销毁后触发\n\n> 注意：参考资料仅列出了这四个钩子，未涵盖 Vue 全部生命周期（如 beforeCreate、beforeMount、beforeUpdate、beforeDestroy 等）。如需完整列表，建议查阅官方文档。"
+    },
+    {
+      "qid": 11,
+      "category": "frontend_bagu",
+      "question": "Vue 的生命周期包括哪些阶段？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4949,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 的生命周期包括哪些阶段？",
+          "hits": 1,
+          "top_score": 0.6901,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 生命周期钩子函数 阶段 详解",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期钩子函数 阶段 详解",
+          "hits": 1,
+          "top_score": 0.7202,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 的生命周期包括哪些阶段？",
+          "hits": 1,
+          "top_score": 0.6901,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 生命周期钩子函数 创建 挂载 更新 销毁 阶段",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期钩子函数 创建 挂载 更新 销毁 阶段",
+          "hits": 1,
+          "top_score": 0.6916,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，Vue 组件包含 **created、mounted、updated、destroyed** 等生命周期钩子 [^1^]。这些钩子对应了组件从创建到销毁的主要阶段。\n\n由于参考资料仅列举了部分钩子，未完整覆盖 Vue 的全部生命周期阶段（如 beforeCreate、beforeMount、beforeUpdate、beforeDestroy 等），因此**无法基于现有资料给出完整的生命周期列表**。如需更全面的信息，建议查阅官方文档或更详细的资料。",
+      "graph_answer_head": "根据参考资料，Vue 组件包含以下生命周期钩子[^1^]：\n\n- **created**：实例创建完成后触发\n- **mounted**：实例挂载到 DOM 后触发\n- **updated**：数据更新导致视图重新渲染后触发\n- **destroyed**：实例销毁后触发\n\n**说明**：参考资料仅列举了上述四个钩子，未涵盖完整的生命周期阶段（如 `beforeCreate`、`beforeMount`、`beforeUpdate`、`beforeDestroy` 等）。如需完整列表，建议查阅 Vue 官方文档。"
+    },
+    {
+      "qid": 12,
+      "category": "frontend_bagu",
+      "question": "Vue 组件的 created 和 mounted 钩子分别是什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4403,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件的 created 和 mounted 钩子分别是什么？",
+          "hits": 1,
+          "top_score": 0.7132,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue created mounted 生命周期钩子区别 执行时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue created mounted 生命周期钩子区别 执行时机",
+          "hits": 1,
+          "top_score": 0.7293,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件的 created 和 mounted 钩子分别是什么？",
+          "hits": 1,
+          "top_score": 0.7132,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue created mounted 生命周期钩子区别 执行时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue created mounted 生命周期钩子区别 执行时机",
+          "hits": 1,
+          "top_score": 0.7293,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "# Vue 组件的 `created` 与 `mounted` 钩子\n\n根据参考资料，Vue 组件拥有 `created`、`mounted`、`updated`、`destroyed` 等生命周期钩子[^1^]。以下是这两个钩子的具体说明：\n\n- **`created` 钩子**：在组件实例被创建之后立即调用。此时已完成数据观测（data）、计算属性（computed）、方法（methods）和事件监听器的初始化，但**尚未挂载到 DOM**，因此无法访问 `this.$el`。\n- **`mounted` 钩子**：在组件挂载到 DOM 后调用。此时模板已渲染，`this.$el` 可用，",
+      "graph_answer_head": "根据参考资料，Vue 组件包含 **created** 和 **mounted** 两个生命周期钩子[^1^]，但资料未详细说明二者的具体定义与区别。基于 Vue 通用知识补充如下：\n\n### created 钩子\n- **触发时机**：组件实例创建完成后立即调用，此时已完成数据观测（data）、属性计算（computed）、方法绑定（methods）等初始化，但**尚未挂载到 DOM**。\n- **适用场景**：适合在此阶段进行**数据初始化**、**异步请求获取数据**、**非 DOM 相关的逻辑处理**（如事件总线注册）。\n\n### mounted 钩子\n- **触发时机**：组件挂载到"
+    },
+    {
+      "qid": 13,
+      "category": "frontend_bagu",
+      "question": "Vue 生命周期中的 updated 和 destroyed 有什么用？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.5801,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期中的 updated 和 destroyed 有什么用？",
+          "hits": 1,
+          "top_score": 0.7265,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue updated destroyed 生命周期钩子 作用 使用场景",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue updated destroyed 生命周期钩子 作用 使用场景",
+          "hits": 1,
+          "top_score": 0.7146,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期中的 updated 和 destroyed 有什么用？",
+          "hits": 1,
+          "top_score": 0.7265,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue updated destroyed 生命周期钩子 作用 使用场景",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue updated destroyed 生命周期钩子 作用 使用场景",
+          "hits": 1,
+          "top_score": 0.7146,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "# Vue 生命周期中的 `updated` 与 `destroyed`\n\n根据现有参考资料，仅能确认 Vue 组件**存在** `updated` 和 `destroyed` 这两个生命周期钩子[^1^]，但参考资料**未提供**这两个钩子的具体用途说明。\n\n## 基于 Vue 通用知识的补充说明\n\n> ⚠️ 以下内容**不来自**所给参考资料，仅供参考。\n\n### `updated` 钩子\n- **触发时机**：组件的数据变更导致 DOM 重新渲染和更新后调用。\n- **常见用途**：\n  - 执行依赖于更新后 DOM 的操作（如获取新渲染元素尺寸）。\n  - 监听数据变化后的副作用逻辑（",
+      "graph_answer_head": "# Vue 生命周期中的 `updated` 与 `destroyed`\n\n根据现有参考资料，仅能确认 Vue 组件**存在** `updated` 和 `destroyed` 这两个生命周期钩子[^1^]，但资料中**未提供**它们的具体用途说明。以下基于 Vue 官方通用知识补充解释（非引用自参考资料）：\n\n## `updated` 钩子\n- **触发时机**：组件的数据变更导致 DOM 重新渲染并更新完成后调用。\n- **主要用途**：\n  - 执行依赖更新后 DOM 的操作（如获取更新后的元素尺寸、位置）。\n  - 监听数据变化后的副作用逻辑（需配合 `watch` 或 `comput"
+    },
+    {
+      "qid": 14,
+      "category": "frontend_bagu",
+      "question": "列举 Vue 组件的生命周期钩子函数。",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8875,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "列举 Vue 组件的生命周期钩子函数。",
+          "hits": 1,
+          "top_score": 0.7857,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "列举 Vue 组件的生命周期钩子函数。",
+          "hits": 1,
+          "top_score": 0.7857,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Vue 组件的生命周期钩子函数\n\n根据参考资料，Vue 组件包含以下生命周期钩子函数[^1^]：\n\n- **created**：在组件实例创建完成后立即调用，此时已完成数据观测、属性和方法的运算，但尚未挂载到 DOM。\n- **mounted**：在组件挂载到 DOM 后调用，此时可以访问到真实的 DOM 元素。\n- **updated**：在组件的数据变化导致虚拟 DOM 重新渲染和更新后调用。\n- **destroyed**：在组件实例销毁后调用，此时所有绑定和指令都已解绑，事件监听器被移除。\n\n> **说明**：以上仅列出了参考资料中明确提到的钩子函数。Vue 实际还包含 `befo",
+      "graph_answer_head": "# Vue 组件生命周期钩子函数\n\n根据参考资料，Vue 组件包含以下生命周期钩子函数[^1^]：\n\n- **created**：在组件实例创建完成后立即调用，此时已完成数据观测、属性和方法的运算，但尚未挂载 DOM。\n- **mounted**：在组件挂载到 DOM 后调用，此时可以访问到真实的 DOM 元素。\n- **updated**：在组件的数据变化导致 DOM 重新渲染后调用，可用于执行依赖于 DOM 更新后的操作。\n- **destroyed**：在组件实例销毁后调用，此时所有绑定和指令都已解绑，事件监听器也被移除。\n\n> **注意**：参考资料仅列举了以上四个钩子函数。Vue 实"
+    },
+    {
+      "qid": 15,
+      "category": "frontend_bagu",
+      "question": "Vue 组件在什么时候会触发 mounted 钩子？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.7857,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件在什么时候会触发 mounted 钩子？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue mounted 生命周期钩子触发时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue mounted 生命周期钩子触发时机",
+          "hits": 1,
+          "top_score": 0.6832,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "Vue mounted 生命周期钩子 触发时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "Vue mounted 生命周期钩子 触发时机",
+          "hits": 1,
+          "top_score": 0.6832,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 组件在什么时候会触发 mounted 钩子？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue mounted 钩子触发时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue mounted 钩子触发时机",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "Vue mounted 钩子触发时机 生命周期",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "Vue mounted 钩子触发时机 生命周期",
+          "hits": 1,
+          "top_score": 0.6592,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有参考资料，**无法准确回答** Vue 组件在什么时候触发 `mounted` 钩子。\n\n参考资料仅列出了 Vue 组件包含 `created`、`mounted`、`updated`、`destroyed` 等生命周期钩子[^1^]，但**未说明** `mounted` 的具体触发时机或条件。\n\n如需了解 `mounted` 的触发时机，建议查阅 Vue 官方文档或更详细的教程。",
+      "graph_answer_head": "根据现有参考资料，**无法完整回答**“Vue 组件在什么时候会触发 mounted 钩子”这一问题。\n\n参考资料仅列出了 Vue 组件存在 `created`、`mounted`、`updated`、`destroyed` 等生命周期钩子[^1^]，但**未说明** `mounted` 的具体触发时机（例如：在组件挂载到 DOM 后触发，或与 DOM 渲染完成的关系等）。\n\n如需准确回答，建议补充 Vue 官方文档或更详细的生命周期说明资料。"
+    },
+    {
+      "qid": 16,
+      "category": "frontend_bagu",
+      "question": "Vue 面试中响应式原理常考哪些点？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3219,
+      "consistent": false,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 面试中响应式原理常考哪些点？",
+          "hits": 1,
+          "top_score": 0.7617,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 面试中响应式原理常考哪些点？",
+          "hits": 1,
+          "top_score": 0.7617,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据现有参考资料，只能确认一个核心考点：\n\n- **Vue 2 与 Vue 3 响应式实现方式的差异**：Vue 2 使用 `Object.defineProperty`，Vue 3 使用 `Proxy`[^1^]。\n\n---\n\n**说明**：参考资料仅覆盖了上述单一事实，未包含其他常见考点（如依赖收集、派发更新、数组监听、`ref`/`reactive` 区别、性能对比等）。如需完整回答“常考哪些点”，请提供更详细的资料，我将基于新资料补充。",
+      "graph_answer_head": "根据现有参考资料，只能确认响应式原理的核心差异：\n\n- **Vue 2** 使用 `Object.defineProperty` 实现响应式[^1^]\n- **Vue 3** 使用 `Proxy` 实现响应式[^1^]\n\n---\n\n**关于“常考哪些点”**，参考资料未提供具体面试考点清单，无法完整列举。但基于上述核心差异，可推测常见考察方向包括：\n\n1. **实现机制对比**：`Object.defineProperty` 与 `Proxy` 的优缺点（如性能、数组/对象监听能力、新增属性处理等）\n2. **响应式触发流程**：依赖收集、派发更新的具体步骤\n3. **Vue 3 的 `ref"
+    },
+    {
+      "qid": 17,
+      "category": "frontend_bagu",
+      "question": "Vue 3 为什么用 Proxy 而不是 defineProperty？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6272,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 为什么用 Proxy 而不是 defineProperty？",
+          "hits": 1,
+          "top_score": 0.6678,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 3 Proxy 与 defineProperty 响应式原理对比及优势",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 3 Proxy 与 defineProperty 响应式原理对比及优势",
+          "hits": 1,
+          "top_score": 0.7452,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Vue 3 为什么用 Proxy 而不是 defineProperty？",
+          "hits": 1,
+          "top_score": 0.6678,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 3 Proxy 与 defineProperty 响应式原理对比",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 3 Proxy 与 defineProperty 响应式原理对比",
+          "hits": 1,
+          "top_score": 0.7423,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "# Vue 3 为什么用 Proxy 而不是 defineProperty？\n\n根据现有参考资料，仅能确认 **Vue 2 使用 `Object.defineProperty` 实现响应式，而 Vue 3 改用 `Proxy` 实现响应式**[^1^]。但参考资料未详细说明具体原因，以下基于 Vue 官方文档及社区共识进行补充（非引用资料内容，仅供参考）。\n\n## 核心原因（基于技术背景）\n\n### 1. **无法监听新增/删除属性**\n- `Object.defineProperty` 只能劫持已有属性，新增属性（如 `this.obj.newKey = 1`）或删除属性（`delete o",
+      "graph_answer_head": "# Vue 3 为什么用 Proxy 而不是 defineProperty？\n\n根据现有参考资料，仅能确认 **Vue 2 使用 `Object.defineProperty` 实现响应式，而 Vue 3 改用 `Proxy`**[^1^]，但参考资料**未详细说明具体原因**。以下基于通用技术背景补充说明，供参考：\n\n## 核心原因（基于通用知识）\n\n### 1. **无法监听新增/删除属性**\n- `defineProperty` 只能劫持已有属性，新增或删除属性时无法触发响应式更新（Vue 2 需用 `Vue.set`/`Vue.delete` 补救）。\n- `Proxy` 可拦截 `s"
+    },
+    {
+      "qid": 18,
+      "category": "frontend_bagu",
+      "question": "说说 Vue 生命周期的主要内容。",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6038,
+      "consistent": true,
+      "legacy_files": [
+        "vue.md"
+      ],
+      "graph_files": [
+        "vue.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "说说 Vue 生命周期的主要内容。",
+          "hits": 1,
+          "top_score": 0.7299,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 生命周期钩子函数详解 created mounted updated destroyed",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期钩子函数详解 created mounted updated destroyed",
+          "hits": 1,
+          "top_score": 0.7757,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "说说 Vue 生命周期的主要内容。",
+          "hits": 1,
+          "top_score": 0.7299,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Vue 生命周期钩子函数详解 created mounted updated destroyed",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Vue 生命周期钩子函数详解 created mounted updated destroyed",
+          "hits": 1,
+          "top_score": 0.7757,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Vue 生命周期主要内容\n\nVue 组件的生命周期是指组件从创建到销毁的整个过程，Vue 为此提供了一系列生命周期钩子函数，方便开发者在特定阶段执行自定义逻辑。\n\n## 核心生命周期钩子\n\n根据参考资料，Vue 组件包含以下主要生命周期钩子[^1^]：\n\n- **created**：组件实例创建完成后触发，此时已完成数据观测、属性与方法的运算，但尚未挂载到 DOM。\n- **mounted**：组件挂载到 DOM 后触发，此时可以访问到真实的 DOM 元素，适合进行 DOM 操作或发起异步请求。\n- **updated**：组件因数据变化导致 DOM 重新渲染后触发，可用于执行依赖 DOM",
+      "graph_answer_head": "# Vue 生命周期主要内容\n\nVue 组件的生命周期是指组件从创建到销毁的整个过程，期间会触发一系列**生命周期钩子函数**，方便开发者在特定阶段执行自定义逻辑。\n\n## 核心生命周期钩子\n\n根据参考资料，Vue 组件主要包含以下生命周期钩子[^1^]：\n\n- **created**：组件实例创建完成后触发，此时数据观测、属性和方法已初始化，但 DOM 尚未挂载。\n- **mounted**：组件挂载到 DOM 后触发，此时可以访问和操作真实 DOM 元素。\n- **updated**：组件因数据变化导致 DOM 重新渲染后触发，适合执行依赖更新后的操作。\n- **destroyed**：组"
+    },
+    {
+      "qid": 19,
+      "category": "backend_bagu",
+      "question": "Redis 支持哪些数据类型？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.7361,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持哪些数据类型？",
+          "hits": 2,
+          "top_score": 0.8152,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持哪些数据类型？",
+          "hits": 2,
+          "top_score": 0.8152,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Redis 支持的数据类型\n\n根据参考资料，Redis 支持以下数据类型[^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型覆盖了常见的缓存、计数、排行榜、社交关系等场景需求。若需了解每种类型的详细用法或底层实现，参考资料中未提供进一步说明。",
+      "graph_answer_head": "# Redis 支持的数据类型\n\n根据参考资料，Redis 支持以下数据类型[^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型覆盖了常见的缓存、计数、队列、去重、排行榜等场景需求。\n\n> 注：参考资料仅列出上述五种基本数据类型，未提及 Redis 后续版本新增的 Bitmap、HyperLogLog、Geo 等扩展类型。如需更完整的信息，建议查阅官方文档。"
+    },
+    {
+      "qid": 20,
+      "category": "backend_bagu",
+      "question": "Redis 有哪些基本数据结构？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4124,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 有哪些基本数据结构？",
+          "hits": 2,
+          "top_score": 0.7196,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis 基本数据类型 String Hash List Set Sorted Set",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis 基本数据类型 String Hash List Set Sorted Set",
+          "hits": 2,
+          "top_score": 0.8193,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 有哪些基本数据结构？",
+          "hits": 2,
+          "top_score": 0.7196,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis 基本数据类型 String Hash List Set Sorted Set",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis 基本数据类型 String Hash List Set Sorted Set",
+          "hits": 2,
+          "top_score": 0.8193,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Redis 基本数据结构\n\n根据参考资料，Redis 支持以下基本数据类型[^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型是 Redis 存储和操作数据的基础，每种类型都有对应的命令和适用场景。例如，String 适合缓存简单值，Hash 适合存储对象字段，List 适合队列操作，Set 适合去重和集合运算，Sorted Set 适合排行榜等需要排序的场景。\n\n> 注：参考资料仅列出上述五种类型，未提及 Redis 5.0 后新增的 S",
+      "graph_answer_head": "### Redis 基本数据结构\n\n根据参考资料，Redis 支持以下基本数据类型 [^1^]：\n\n- **String**：字符串类型，可存储文本、数字或二进制数据，是最基础的数据结构。\n- **Hash**：哈希类型，适合存储对象，如用户信息（字段-值映射）。\n- **List**：列表类型，按插入顺序存储字符串集合，支持两端操作。\n- **Set**：集合类型，无序且元素唯一，支持交集、并集等运算。\n- **Sorted Set**：有序集合，每个元素关联一个分数，按分数排序，适合排行榜等场景。\n\n> 注：以上内容基于参考资料 [^1^] 的明确列举。若需了解每种数据结构的详细命令或使用"
+    },
+    {
+      "qid": 21,
+      "category": "backend_bagu",
+      "question": "Redis 的 String 和 Hash 类型分别是什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3165,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 String 和 Hash 类型分别是什么？",
+          "hits": 2,
+          "top_score": 0.772,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 String 和 Hash 类型分别是什么？",
+          "hits": 2,
+          "top_score": 0.772,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，可以确认 Redis 支持 **String** 和 **Hash** 这两种数据类型 [^1^]，但参考资料并未详细说明它们的具体定义和区别。\n\n- **String**：是 Redis 最基本的数据类型，通常用于存储字符串、整数或浮点数，可执行原子增减操作。\n- **Hash**：是一个键值对集合，适合存储对象（如用户信息），可以单独操作某个字段。\n\n由于参考资料仅列出了数据类型名称，未提供更详细的说明，以上解释基于 Redis 的通用知识。如需更权威的细节，建议查阅官方文档或补充资料。",
+      "graph_answer_head": "根据参考资料，**Redis 支持 String、Hash、List、Set、Sorted Set 等数据类型**[^1^]，但参考资料并未具体说明 String 和 Hash 类型的定义、特点或使用场景。\n\n因此，我无法基于现有资料详细解释这两种类型的具体内容。如需准确了解，建议查阅 Redis 官方文档或更详细的教程。"
+    },
+    {
+      "qid": 22,
+      "category": "backend_bagu",
+      "question": "Redis 的 List、Set 和 Sorted Set 分别是什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.2657,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 List、Set 和 Sorted Set 分别是什么？",
+          "hits": 1,
+          "top_score": 0.7093,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis List Set Sorted Set 数据结构 区别 使用场景",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis List Set Sorted Set 数据结构 区别 使用场景",
+          "hits": 1,
+          "top_score": 0.7322,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 List、Set 和 Sorted Set 分别是什么？",
+          "hits": 1,
+          "top_score": 0.7093,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis List Set Sorted Set 数据结构区别与使用场景",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis List Set Sorted Set 数据结构区别与使用场景",
+          "hits": 1,
+          "top_score": 0.7295,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据提供的参考资料，仅能确认 **Redis 支持 List、Set 和 Sorted Set 这三种数据类型**[^1^]，但参考资料中**并未详细说明**这三种类型各自的具体定义、特点或用途。\n\n因此，基于现有资料，我无法准确回答“List、Set 和 Sorted Set 分别是什么”这一问题。若需要完整解释，建议补充更详细的参考资料（如各类型的底层结构、常用命令、适用场景等）。\n\n如需进一步帮助，请提供更多相关资料。",
+      "graph_answer_head": "根据现有参考资料，仅能确认 **Redis 支持 String、Hash、List、Set、Sorted Set 等数据类型**[^1^]，但**未提供**关于 List、Set 和 Sorted Set 各自具体定义、特性或用途的详细说明。\n\n因此，我无法基于参考资料给出这三种类型的准确解释。以下为基于通用知识的简要补充（**非来自参考资料**，仅供参考）：\n\n- **List**：有序字符串列表，支持从两端推入/弹出元素，适合消息队列、最新列表等场景。\n- **Set**：无序且元素唯一的集合，支持交集、并集、差集运算，适合标签、去重等场景。\n- **Sorted Set**：有序集合，每"
+    },
+    {
+      "qid": 23,
+      "category": "backend_bagu",
+      "question": "列举 Redis 的五种数据类型。",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3024,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "列举 Redis 的五种数据类型。",
+          "hits": 2,
+          "top_score": 0.8189,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "列举 Redis 的五种数据类型。",
+          "hits": 2,
+          "top_score": 0.8189,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Redis 的五种数据类型\n\n根据参考资料，Redis 支持以下五种数据类型 [^1^]：\n\n1. **String（字符串）**：最基础的数据类型，可存储字符串、整数或浮点数，常用于缓存、计数器等场景。\n2. **Hash（哈希）**：键值对集合，适合存储对象（如用户信息），支持对单个字段的读写。\n3. **List（列表）**：有序的字符串列表，支持从两端插入或弹出元素，常用于消息队列、最新列表等。\n4. **Set（集合）**：无序且唯一的字符串集合，支持交集、并集、差集运算，适合去重、标签系统等。\n5. **Sorted Set（有序集合）**：带分数的唯一元素集合，按分数排序",
+      "graph_answer_head": "# Redis 的五种数据类型\n\n根据参考资料，Redis 支持以下五种数据类型[^1^]：\n\n1. **String**（字符串）\n2. **Hash**（哈希）\n3. **List**（列表）\n4. **Set**（集合）\n5. **Sorted Set**（有序集合）\n\n这些数据类型是 Redis 中最基础、最常用的五种，分别适用于不同的业务场景，例如缓存、计数器、消息队列、去重、排行榜等。\n\n[^1^]: Redis 面试八股 > Redis 数据类型"
+    },
+    {
+      "qid": 24,
+      "category": "backend_bagu",
+      "question": "Redis 数据类型面试常考什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.355,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 数据类型面试常考什么？",
+          "hits": 2,
+          "top_score": 0.8154,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 数据类型面试常考什么？",
+          "hits": 2,
+          "top_score": 0.8154,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Redis 数据类型面试常考点\n\n根据参考资料，Redis 支持 **String、Hash、List、Set、Sorted Set** 五种核心数据类型[^1^]。面试中常围绕以下方面展开：\n\n- **基本特性**：每种类型的底层结构（如 SDS、哈希表、双向链表、跳表）及适用场景。\n- **常用命令**：如 String 的 `SET/GET`，Hash 的 `HSET/HGET`，List 的 `LPUSH/RPUSH`，Set 的 `SADD/SMEMBERS`，Sorted Set 的 `ZADD/ZRANGE`。\n- **区别与选择**：例如 Set 与 Sorted Se",
+      "graph_answer_head": "# Redis 数据类型面试常考点\n\n根据参考资料，Redis 支持 **String、Hash、List、Set、Sorted Set** 等数据类型[^1^]。面试中常考的内容通常围绕以下几个方面：\n\n## 1. 各类型的基本特性\n- **String**：最基础类型，可存字符串、整数或浮点数，常用于缓存、计数器。\n- **Hash**：适合存储对象，如用户信息，可对单个字段进行读写。\n- **List**：有序列表，支持两端操作，常用于消息队列、最新列表。\n- **Set**：无序集合，元素唯一，支持交、并、差运算，适合标签、去重场景。\n- **Sorted Set**：有序集合，每个元"
+    },
+    {
+      "qid": 25,
+      "category": "backend_bagu",
+      "question": "Redis 支持哪几种持久化方式？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6098,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持哪几种持久化方式？",
+          "hits": 2,
+          "top_score": 0.8256,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持哪几种持久化方式？",
+          "hits": 2,
+          "top_score": 0.8256,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Redis 持久化方式\n\n根据参考资料，Redis 支持 **两种持久化方式** [^1^]：\n\n- **RDB（Redis Database）**：基于快照的持久化方式，将某一时刻的数据以二进制文件形式保存到磁盘。\n- **AOF（Append Only File）**：基于日志追加的持久化方式，记录每次写操作命令，重启时通过重放日志恢复数据。\n\n这两种方式可以单独使用，也可以同时启用，具体配置取决于业务对数据安全性和性能的需求。\n\n[^1^]: Redis 面试八股 > 持久化",
+      "graph_answer_head": "### Redis 持久化方式\n\n根据参考资料，Redis 支持 **两种持久化方式** [^1^]：\n\n- **RDB（Redis Database）**：通过快照方式将内存中的数据定期保存到磁盘。\n- **AOF（Append Only File）**：通过记录每次写操作命令，以追加日志的方式持久化数据。\n\n> 注：参考资料仅提及这两种方式，未涉及混合持久化等扩展内容。如需更详细机制（如触发策略、恢复流程），建议查阅官方文档或补充资料。"
+    },
+    {
+      "qid": 26,
+      "category": "backend_bagu",
+      "question": "Redis 的持久化机制有哪些？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.7355,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的持久化机制有哪些？",
+          "hits": 1,
+          "top_score": 0.7673,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的持久化机制有哪些？",
+          "hits": 1,
+          "top_score": 0.7673,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Redis 持久化机制\n\n根据参考资料，Redis 支持 **RDB** 和 **AOF** 两种持久化方式[^1^]。\n\n- **RDB（Redis DataBase）**：基于内存快照的持久化，在指定时间间隔内将数据集的快照写入磁盘。\n- **AOF（Append Only File）**：以日志形式记录每次写操作，重启时通过重放日志恢复数据。\n\n> 注：参考资料仅提及这两种持久化方式的存在，未提供具体实现细节。如需更深入对比（如触发机制、恢复速度、数据安全性等），建议补充更多资料。",
+      "graph_answer_head": "# Redis 持久化机制\n\n根据参考资料，Redis 支持 **RDB** 和 **AOF** 两种持久化方式[^1^]。\n\n- **RDB（Redis Database）**：基于快照的持久化，将某一时刻的内存数据保存到磁盘文件中。\n- **AOF（Append Only File）**：基于操作日志的持久化，记录每次写命令并追加到文件末尾。\n\n> 注：参考资料仅提及两种持久化方式的名称，未提供具体细节（如触发机制、优缺点等）。如需更深入的信息，建议补充相关文档。"
+    },
+    {
+      "qid": 27,
+      "category": "backend_bagu",
+      "question": "什么是 Redis 的 RDB 持久化？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4554,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是 Redis 的 RDB 持久化？",
+          "hits": 1,
+          "top_score": 0.7965,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是 Redis 的 RDB 持久化？",
+          "hits": 1,
+          "top_score": 0.7965,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据提供的参考资料，**无法完整回答**“什么是 Redis 的 RDB 持久化”这一问题。\n\n参考资料仅提及 **Redis 支持 RDB 和 AOF 两种持久化方式**[^1^]，但未对 RDB 的具体定义、工作原理、触发机制、优缺点等内容进行任何说明。\n\n如需了解 RDB 持久化的详细内容（如快照生成、配置参数、恢复流程等），请提供更完整的参考资料。",
+      "graph_answer_head": "根据参考资料，**Redis 支持 RDB 和 AOF 两种持久化方式**[^1^]。但参考资料中仅提及了 RDB 这一名称，**未提供关于 RDB 持久化的具体定义、工作原理或配置细节**。\n\n因此，基于现有资料，我无法详细解释 RDB 持久化的机制。若需完整了解，建议补充相关文档或说明。"
+    },
+    {
+      "qid": 28,
+      "category": "backend_bagu",
+      "question": "什么是 Redis 的 AOF 持久化？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.2778,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是 Redis 的 AOF 持久化？",
+          "hits": 1,
+          "top_score": 0.7941,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是 Redis 的 AOF 持久化？",
+          "hits": 1,
+          "top_score": 0.7941,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据现有参考资料，仅能确认 **Redis 支持 RDB 和 AOF 两种持久化方式** [^1^]，但**未提供关于 AOF 持久化具体机制（如工作原理、写入策略、重写机制等）的详细说明**。\n\n因此，无法基于参考资料完整回答“什么是 Redis 的 AOF 持久化”。如需准确解释，建议补充相关文档或资料。",
+      "graph_answer_head": "根据现有参考资料，**仅能确认 Redis 支持 AOF 持久化方式**[^1^]，但资料中**未提供** AOF 的具体定义、工作原理或实现细节。\n\n如需完整了解 AOF，建议补充以下信息：\n- **AOF 全称**：Append Only File（追加写文件）\n- **核心机制**：将每次写操作命令以日志形式追加记录到文件中\n- **恢复方式**：重启时通过重放日志中的命令来重建数据\n- **与 RDB 的区别**：RDB 是快照持久化，AOF 是命令日志持久化\n\n> ⚠️ 以上补充内容**非来自参考资料**，仅为帮助理解，请以权威文档为准。"
+    },
+    {
+      "qid": 29,
+      "category": "backend_bagu",
+      "question": "Redis 的 RDB 和 AOF 有什么区别？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.5429,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 RDB 和 AOF 有什么区别？",
+          "hits": 2,
+          "top_score": 0.7981,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 RDB 和 AOF 有什么区别？",
+          "hits": 2,
+          "top_score": 0.7981,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据提供的参考资料，**仅能确认 Redis 支持 RDB 和 AOF 两种持久化方式**[^1^]，但**未包含两者在原理、性能、恢复速度、数据安全性等方面的具体区别**。\n\n因此，无法基于现有资料完整回答“RDB 和 AOF 有什么区别”。如需准确对比，建议补充以下信息：\n\n- RDB 的触发机制（如快照频率）与 AOF 的追加日志机制\n- 两者对数据丢失容忍度的差异\n- 恢复速度与文件大小的权衡\n- 实际生产环境中的选型建议\n\n若您能提供更详细的参考资料，我可以为您进一步分析。",
+      "graph_answer_head": "根据现有参考资料，**仅能确认 Redis 支持 RDB 和 AOF 两种持久化方式**[^1^]，但**未提供两者在机制、性能、恢复速度、数据安全性等方面的具体区别**。\n\n如需完整对比，建议补充以下信息：\n- RDB 的触发条件（如 save 规则）、文件格式、恢复时数据丢失范围\n- AOF 的写回策略（如 always/everysec）、重写机制、文件体积控制\n- 两种方式在故障恢复时的优先级与混合使用场景\n\n若您能提供更详细的资料，我可进一步给出结构化对比。当前回答受限于参考资料，无法展开具体差异。"
+    },
+    {
+      "qid": 30,
+      "category": "backend_bagu",
+      "question": "请介绍 Redis 的持久化方案。",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.4091,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "请介绍 Redis 的持久化方案。",
+          "hits": 2,
+          "top_score": 0.805,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "请介绍 Redis 的持久化方案。",
+          "hits": 2,
+          "top_score": 0.805,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Redis 持久化方案\n\n根据参考资料，Redis 支持 **RDB** 和 **AOF** 两种持久化方式 [^1^]。\n\n## 1. RDB（Redis Database）持久化\n- **原理**：在指定时间间隔内，将内存中的数据集快照（Snapshot）写入磁盘的二进制文件。\n- **特点**：文件紧凑，恢复速度快，适合备份和灾难恢复。\n- **不足**：可能丢失最后一次快照之后的数据。\n\n## 2. AOF（Append Only File）持久化\n- **原理**：以日志形式记录每次写操作，追加到文件中，重启时通过重放日志恢复数据。\n- **特点**：数据安全性更高，可配置同步策",
+      "graph_answer_head": "# Redis 持久化方案\n\n根据参考资料，**Redis 支持 RDB 和 AOF 两种持久化方式**[^1^]。\n\n## 两种持久化方式简介\n\n- **RDB（Redis Database）**：以快照形式将内存数据定期保存到磁盘，生成二进制格式的持久化文件。\n- **AOF（Append Only File）**：以日志形式记录每次写操作命令，追加保存到文件中，重启时通过重放命令恢复数据。\n\n> 说明：参考资料仅提及这两种持久化方式的存在，未提供具体机制、配置参数或优缺点对比。如需深入了解 RDB 与 AOF 的触发条件、恢复流程、性能影响及混合持久化等细节，建议查阅官方文档或更详细的教"
+    },
+    {
+      "qid": 31,
+      "category": "backend_bagu",
+      "question": "Redis 面试中持久化部分常问什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.2708,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 面试中持久化部分常问什么？",
+          "hits": 2,
+          "top_score": 0.7869,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 面试中持久化部分常问什么？",
+          "hits": 2,
+          "top_score": 0.7869,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "### Redis 面试中持久化部分常问什么？\n\n根据参考资料，Redis 面试中持久化部分的核心考点主要围绕 **RDB** 和 **AOF** 两种持久化方式展开[^1^]。以下是常见的面试问题方向：\n\n#### 1. **基础概念**\n- **RDB 和 AOF 分别是什么？**  \n  RDB 是快照式持久化，AOF 是日志追加式持久化[^1^]。\n- **两者各自的特点和适用场景？**  \n  常问 RDB 的恢复速度快、文件紧凑，但可能丢失最后一次快照后的数据；AOF 数据安全性更高，但文件体积大、恢复速度相对较慢。\n\n#### 2. **配置与触发机制**\n- **RDB 的触发",
+      "graph_answer_head": "### Redis 面试中持久化部分常问什么？\n\n根据参考资料，Redis 面试中关于持久化的核心考点如下：\n\n#### 1. **持久化方式**\n- Redis 支持 **RDB** 和 **AOF** 两种持久化方式 [^1^]。\n- 面试常问：两者的**基本原理**、**优缺点**、以及**如何选择**。\n\n#### 2. **RDB 持久化**\n- 常见问题：\n  - RDB 的**触发机制**（手动 `SAVE`/`BGSAVE`，自动快照配置）。\n  - RDB 的**优点**：文件紧凑、恢复速度快、适合备份。\n  - RDB 的**缺点**：可能丢失最后一次快照后的数据。\n\n##"
+    },
+    {
+      "qid": 32,
+      "category": "backend_bagu",
+      "question": "Redis 的 Sorted Set 属于哪种数据类型？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.1809,
+      "consistent": false,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 Sorted Set 属于哪种数据类型？",
+          "hits": 2,
+          "top_score": 0.7775,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 的 Sorted Set 属于哪种数据类型？",
+          "hits": 2,
+          "top_score": 0.7775,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "**Redis 的 Sorted Set 属于 Redis 支持的数据类型之一。** [^1^]\n\n具体来说，Redis 官方将数据类型划分为以下几类 [^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n因此，**Sorted Set 是 Redis 的一种基础数据类型**，它属于“有序集合”类别，常用于排行榜、延迟队列等场景。 [^1^]\n\n> 注：参考资料仅列出数据类型名称，未提供 Sorted Set 的详细定义或特性。如需更深入的信息（如底层实现、常用",
+      "graph_answer_head": "### Redis 数据类型中的 Sorted Set\n\n**Sorted Set** 是 Redis 支持的**五种基本数据类型之一**，与 String、Hash、List、Set 并列 [^1^]。\n\n- **核心特点**：每个成员关联一个**分数（score）**，集合按分数排序，支持范围查询、排名等操作。\n- **典型用途**：排行榜、延时队列、优先级任务等。\n\n> 注意：Sorted Set 与持久化方式（RDB/AOF）无关，持久化是独立于数据类型的机制 [^2^]。"
+    },
+    {
+      "qid": 33,
+      "category": "backend_bagu",
+      "question": "Redis 支持 Hash 类型吗？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.5148,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持 Hash 类型吗？",
+          "hits": 2,
+          "top_score": 0.7432,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis Hash 数据类型 支持 用法",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis Hash 数据类型 支持 用法",
+          "hits": 2,
+          "top_score": 0.794,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持 Hash 类型吗？",
+          "hits": 2,
+          "top_score": 0.7432,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis Hash 数据类型 支持 用法",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis Hash 数据类型 支持 用法",
+          "hits": 2,
+          "top_score": 0.794,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "**是的，Redis 支持 Hash 类型。**\n\n根据参考资料，Redis 支持 **String、Hash、List、Set、Sorted Set** 等数据类型[^1^]。其中 **Hash** 是 Redis 中一种常用的数据结构，适合存储对象或键值对集合，例如用户信息、商品详情等场景。\n\n- **特点**：Hash 类型可以存储多个字段（field）和对应的值（value），支持对单个字段的读写操作。\n- **常见命令**：如 `HSET`、`HGET`、`HGETALL` 等，便于高效管理结构化数据。\n\n如需进一步了解 Hash 的具体用法或与其他类型的对比，可参考 Redis 官",
+      "graph_answer_head": "**是的，Redis 支持 Hash 类型。**[^1^]\n\n根据参考资料，Redis 支持的数据类型包括 **String**、**Hash**、**List**、**Set** 和 **Sorted Set** 等[^1^]。Hash 类型是其中之一，常用于存储对象或键值对集合，适合表示如用户信息、商品详情等结构化数据。"
+    },
+    {
+      "qid": 34,
+      "category": "backend_bagu",
+      "question": "Redis 支持 Set 集合类型吗？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8108,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持 Set 集合类型吗？",
+          "hits": 2,
+          "top_score": 0.7332,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis Set 集合类型支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis Set 集合类型支持",
+          "hits": 2,
+          "top_score": 0.7915,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 支持 Set 集合类型吗？",
+          "hits": 2,
+          "top_score": 0.7332,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Redis Set 集合类型支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Redis Set 集合类型支持",
+          "hits": 2,
+          "top_score": 0.7915,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "**是的，Redis 支持 Set 集合类型。** [^1^]\n\n根据参考资料，Redis 支持的数据类型包括：\n\n- **String**\n- **Hash**\n- **List**\n- **Set**\n- **Sorted Set**\n\n其中 **Set** 是 Redis 内置的集合类型，用于存储**不重复**的元素，并支持集合间的交集、并集、差集等操作。 [^1^]\n\n> 注：参考资料仅列出数据类型名称，未提供 Set 的具体操作细节。如需更详细说明，建议查阅 Redis 官方文档。",
+      "graph_answer_head": "**是的，Redis 支持 Set 集合类型。** [^1^]\n\n根据参考资料，Redis 支持的数据类型包括：\n\n- **String**\n- **Hash**\n- **List**\n- **Set**\n- **Sorted Set** [^1^]\n\n其中 **Set** 是 Redis 内置的一种集合类型，用于存储**不重复**的字符串元素，并支持集合运算（如交集、并集、差集）等操作。"
+    },
+    {
+      "qid": 35,
+      "category": "backend_bagu",
+      "question": "Redis 有几种数据类型，分别叫什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.7915,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 有几种数据类型，分别叫什么？",
+          "hits": 2,
+          "top_score": 0.8045,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 有几种数据类型，分别叫什么？",
+          "hits": 2,
+          "top_score": 0.8045,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Redis 数据类型\n\n根据参考资料，Redis 支持以下 **5 种** 数据类型 [^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型覆盖了常见的缓存、计数、队列、去重、排行榜等业务场景。\n\n[^1^]: Redis 面试八股 > Redis 数据类型",
+      "graph_answer_head": "# Redis 数据类型\n\n根据参考资料，Redis 支持 **5 种**主要数据类型[^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型分别适用于不同的业务场景，例如 String 可用于缓存、计数器，Hash 适合存储对象，List 可用于消息队列，Set 适合去重统计，Sorted Set 则常用于排行榜等场景。\n\n[^1^]: Redis 面试八股 > Redis 数据类型"
+    },
+    {
+      "qid": 36,
+      "category": "backend_bagu",
+      "question": "Redis 持久化的两种方式分别叫什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6616,
+      "consistent": true,
+      "legacy_files": [
+        "redis.md"
+      ],
+      "graph_files": [
+        "redis.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 持久化的两种方式分别叫什么？",
+          "hits": 2,
+          "top_score": 0.7952,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Redis 持久化的两种方式分别叫什么？",
+          "hits": 2,
+          "top_score": 0.7952,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "# Redis 持久化的两种方式\n\n根据参考资料，Redis 支持 **RDB** 和 **AOF** 两种持久化方式 [^1^]。\n\n- **RDB**：快照持久化，将某一时刻的数据以二进制格式保存到磁盘。\n- **AOF**：追加式日志持久化，记录每次写操作命令，重启时通过重放命令恢复数据。\n\n[^1^]: Redis 面试八股 > 持久化",
+      "graph_answer_head": "# Redis 持久化的两种方式\n\n根据参考资料，Redis 支持 **RDB** 和 **AOF** 两种持久化方式 [^1^]。\n\n- **RDB**：通过生成数据快照（Snapshot）进行持久化，将某一时刻的内存数据保存到磁盘文件中。\n- **AOF**：通过记录每次写操作命令（Append Only File）进行持久化，以日志形式追加保存，重启时可重放命令恢复数据。\n\n两种方式各有特点，实际使用中也可结合使用以兼顾性能与数据安全。"
+    },
+    {
+      "qid": 37,
+      "category": "general",
+      "question": "这份通用笔记是用来测试什么功能的？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8434,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "这份通用笔记是用来测试什么功能的？",
+          "hits": 1,
+          "top_score": 0.856,
+          "confidence": "high"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "这份通用笔记是用来测试什么功能的？",
+          "hits": 1,
+          "top_score": 0.856,
+          "confidence": "high"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，这份通用笔记是用于**测试批量导入功能**的。[^1^]\n\n- **用途**：作为测试样本，验证批量导入流程是否正常。\n- **说明**：笔记内容明确指出“用于测试批量导入功能”。[^1^]\n\n[^1^]: 通用笔记 > 介绍",
+      "graph_answer_head": "根据参考资料，这份通用笔记是用于**测试批量导入功能**的。[^1^]\n\n- **用途**：验证批量导入功能是否正常工作。\n- **来源**：笔记的“介绍”部分明确说明“这是一份通用笔记，用于测试批量导入功能”。[^1^]\n\n[^1^]: 通用笔记 > 介绍"
+    },
+    {
+      "qid": 38,
+      "category": "general",
+      "question": "通用笔记里提到批量导入支持哪些特性？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6667,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记里提到批量导入支持哪些特性？",
+          "hits": 2,
+          "top_score": 0.7727,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记里提到批量导入支持哪些特性？",
+          "hits": 2,
+          "top_score": 0.7727,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，通用笔记的批量导入功能支持以下特性[^2^]：\n\n- **支持多源路径**：可从多个来源路径导入内容。\n- **支持分类导入**：能够按类别进行导入整理。\n- **支持 Markdown 标题切分**：可根据 Markdown 标题自动切分内容。\n\n此外，该笔记被描述为“用于测试批量导入功能”[^1^]，但参考资料未提供更多细节（如具体操作步骤或格式限制）。如需进一步信息，建议查阅相关文档或说明。",
+      "graph_answer_head": "根据参考资料，通用笔记的批量导入功能支持以下特性：\n\n- **支持多源路径**：可以从多个来源路径导入笔记。[^2^]\n- **支持分类导入**：导入时可按类别进行整理。[^2^]\n- **支持 Markdown 标题切分**：能够根据 Markdown 标题自动切分内容。[^2^]\n\n这些特性旨在提升批量导入的灵活性和效率。需要注意的是，参考资料中未提及更多细节，如具体支持的文件格式或操作步骤。[^1^][^2^]"
+    },
+    {
+      "qid": 39,
+      "category": "general",
+      "question": "批量导入支持多源路径吗？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 1.0,
+      "consistent": true,
+      "legacy_files": [],
+      "graph_files": [],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入支持多源路径吗？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入 多源路径 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入 多源路径 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入支持多源路径吗？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入 多源路径 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入 多源路径 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有知识库，无法找到与该问题相关的内容。",
+      "graph_answer_head": "根据现有知识库，无法找到与该问题相关的内容。"
+    },
+    {
+      "qid": 40,
+      "category": "general",
+      "question": "批量导入支持分类导入吗？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 1.0,
+      "consistent": true,
+      "legacy_files": [],
+      "graph_files": [],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入支持分类导入吗？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入 分类导入 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入 分类导入 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入支持分类导入吗？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入 分类导入 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入 分类导入 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有知识库，无法找到与该问题相关的内容。",
+      "graph_answer_head": "根据现有知识库，无法找到与该问题相关的内容。"
+    },
+    {
+      "qid": 41,
+      "category": "general",
+      "question": "文本处理支持 Markdown 标题切分吗？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.9505,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "文本处理支持 Markdown 标题切分吗？",
+          "hits": 1,
+          "top_score": 0.7606,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "文本处理支持 Markdown 标题切分吗？",
+          "hits": 1,
+          "top_score": 0.7606,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "**支持**。根据参考资料，文本处理功能明确支持 **Markdown 标题切分**[^1^]。",
+      "graph_answer_head": "**支持**。根据参考资料，通用笔记的文本处理功能明确支持 **Markdown 标题切分**[^1^]。"
+    },
+    {
+      "qid": 42,
+      "category": "general",
+      "question": "通用笔记的细节部分提到了哪些功能点？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.777,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记的细节部分提到了哪些功能点？",
+          "hits": 1,
+          "top_score": 0.7293,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 功能点 细节",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 功能点 细节",
+          "hits": 2,
+          "top_score": 0.7287,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "通用笔记细节功能点",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "通用笔记细节功能点",
+          "hits": 2,
+          "top_score": 0.718,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记的细节部分提到了哪些功能点？",
+          "hits": 1,
+          "top_score": 0.7293,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 功能点 细节",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 功能点 细节",
+          "hits": 2,
+          "top_score": 0.7287,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "通用笔记细节功能点",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "通用笔记细节功能点",
+          "hits": 2,
+          "top_score": 0.718,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**通用笔记的细节部分**提到了以下功能点[^2^]：\n\n- **支持多源路径**\n- **支持分类导入**\n- **支持 Markdown 标题切分**\n\n这些功能点旨在提升笔记导入的灵活性和组织效率。",
+      "graph_answer_head": "根据参考资料，**通用笔记的细节部分**提到了以下功能点[^2^]：\n\n- **支持多源路径**：可从多个来源导入笔记内容。\n- **支持分类导入**：能够按类别对导入的笔记进行整理。\n- **支持 Markdown 标题切分**：利用 Markdown 标题结构对笔记进行自动分段或拆分。\n\n这些功能旨在提升笔记导入的灵活性和组织效率。"
+    },
+    {
+      "qid": 43,
+      "category": "general",
+      "question": "笔记中说的多源路径是什么意思？",
+      "sources_jaccard": 0.0,
+      "answer_ratio": 0.1687,
+      "consistent": false,
+      "legacy_files": [],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "笔记中说的多源路径是什么意思？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "多源路径 定义 含义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "多源路径 定义 含义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "多源路径 定义 笔记 含义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "多源路径 定义 笔记 含义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "笔记中说的多源路径是什么意思？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "多源路径 定义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "多源路径 定义",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "多源路径 定义 笔记",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "多源路径 定义 笔记",
+          "hits": 1,
+          "top_score": 0.6543,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有知识库，无法找到与该问题相关的内容。",
+      "graph_answer_head": "根据现有参考资料，**无法明确解释“多源路径”的具体含义**。\n\n参考资料仅提到“通用笔记”支持“多源路径”[^1^]，但未给出该术语的定义、功能说明或使用场景。因此，我无法基于现有信息准确回答您的问题。\n\n建议您查阅更详细的笔记功能文档或联系产品支持，以获取关于“多源路径”的完整解释。"
+    },
+    {
+      "qid": 44,
+      "category": "general",
+      "question": "什么是分类导入？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 1.0,
+      "consistent": true,
+      "legacy_files": [],
+      "graph_files": [],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是分类导入？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "分类导入 定义 概念",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "分类导入 定义 概念",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "什么是分类导入？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "分类导入 定义 概念",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "分类导入 定义 概念",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有知识库，无法找到与该问题相关的内容。",
+      "graph_answer_head": "根据现有知识库，无法找到与该问题相关的内容。"
+    },
+    {
+      "qid": 45,
+      "category": "general",
+      "question": "Markdown 标题切分是做什么的？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.3675,
+      "consistent": false,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Markdown 标题切分是做什么的？",
+          "hits": 1,
+          "top_score": 0.7492,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Markdown 标题切分 功能 作用",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Markdown 标题切分 功能 作用",
+          "hits": 1,
+          "top_score": 0.7843,
+          "confidence": "medium"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "Markdown 标题切分是做什么的？",
+          "hits": 1,
+          "top_score": 0.7492,
+          "confidence": "medium"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "Markdown 标题切分 功能 作用",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "Markdown 标题切分 功能 作用",
+          "hits": 1,
+          "top_score": 0.7843,
+          "confidence": "medium"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**Markdown 标题切分**是通用笔记功能中的一项细节能力[^1^]。其作用可概括为：\n\n- **按标题拆分内容**：将一篇 Markdown 文档依据其标题（如 `#`、`##` 等层级）自动切分为多个独立段落或笔记，便于后续分类导入或单独管理[^1^]。\n- **辅助结构化整理**：通过标题层级识别内容逻辑，使导入过程更清晰，支持多源路径下的高效组织[^1^]。\n\n简而言之，它帮助用户**利用 Markdown 的标题结构自动划分笔记内容**，提升导入和整理的自动化程度。若需更具体的操作示例或配置细节，当前参考资料未提供，建议查阅完整文档。",
+      "graph_answer_head": "根据参考资料，**Markdown 标题切分**是“通用笔记”功能中的一项细节能力 [^1^]。\n\n具体来说，它指的是在导入或处理笔记内容时，系统会根据 Markdown 语法中的标题（如 `#`、`##`、`###` 等）将文档自动划分为多个独立的部分或章节 [^1^]。这有助于：\n\n- **结构化整理**：将长文档按标题层级拆解，便于分类和检索。\n- **精准导入**：支持按标题粒度导入内容，而非整篇导入 [^1^]。\n\n不过，参考资料仅提及该功能的存在，未详细说明切分后的具体用途（如是否生成独立笔记或仅用于预览）。如需更深入的解释，建议查阅完整文档。"
+    },
+    {
+      "qid": 46,
+      "category": "general",
+      "question": "通用笔记的介绍部分说了什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6335,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记的介绍部分说了什么？",
+          "hits": 1,
+          "top_score": 0.7415,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 介绍 内容",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 介绍 内容",
+          "hits": 1,
+          "top_score": 0.7376,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记的介绍部分说了什么？",
+          "hits": 1,
+          "top_score": 0.7415,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 介绍 内容",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 介绍 内容",
+          "hits": 1,
+          "top_score": 0.7376,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，通用笔记的介绍部分内容如下：\n\n- **用途**：这是一份通用笔记，用于测试**批量导入功能**。[^1^]\n\n参考资料中仅包含这一条信息，未提供更多关于通用笔记的详细说明。如需更多内容，请提供更完整的资料。",
+      "graph_answer_head": "根据参考资料，**通用笔记**的介绍部分内容如下[^1^]：\n\n- 这是一份**通用笔记**，其用途是**测试批量导入功能**。\n\n除此之外，参考资料未提供更多关于该笔记的详细说明。若需进一步了解，建议查阅其他相关文档。"
+    },
+    {
+      "qid": 47,
+      "category": "general",
+      "question": "这个测试笔记支持哪些导入方式？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.8418,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "这个测试笔记支持哪些导入方式？",
+          "hits": 2,
+          "top_score": 0.7494,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "测试笔记 导入方式 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "测试笔记 导入方式 支持",
+          "hits": 2,
+          "top_score": 0.7299,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "这个测试笔记支持哪些导入方式？",
+          "hits": 2,
+          "top_score": 0.7494,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "测试笔记 导入方式 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "测试笔记 导入方式 支持",
+          "hits": 2,
+          "top_score": 0.7299,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，该测试笔记支持的导入方式包括：\n\n- **支持多源路径** [^2^]\n- **支持分类导入** [^2^]\n- **支持 Markdown 标题切分** [^2^]\n\n这些功能在“通用笔记 > 细节”部分有明确说明 [^2^]。该笔记本身用于测试批量导入功能 [^1^]，但参考资料中未提及除上述三项外的其他导入方式。",
+      "graph_answer_head": "根据参考资料，该测试笔记支持的导入方式包括：\n\n- **支持多源路径** [^2^]\n- **支持分类导入** [^2^]\n- **支持 Markdown 标题切分** [^2^]\n\n这些功能在“通用笔记 > 细节”部分有明确说明 [^2^]。此外，该笔记本身用于测试批量导入功能 [^1^]，但参考资料未详细说明其他导入方式（如文件格式、批量操作的具体步骤等）。如需更完整的信息，建议查阅相关文档或进一步询问。"
+    },
+    {
+      "qid": 48,
+      "category": "general",
+      "question": "批量导入功能支持哪几个特性？",
+      "sources_jaccard": 0.0,
+      "answer_ratio": 0.1111,
+      "consistent": false,
+      "legacy_files": [],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入功能支持哪几个特性？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入 特性 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入 特性 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "批量导入功能支持哪几个特性？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "批量导入功能 特性 支持",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "批量导入功能 特性 支持",
+          "hits": 1,
+          "top_score": 0.6603,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "批量导入功能特性",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "批量导入功能特性",
+          "hits": 1,
+          "top_score": 0.6776,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据现有知识库，无法找到与该问题相关的内容。",
+      "graph_answer_head": "根据现有参考资料，**无法回答**“批量导入功能支持哪几个特性”这一问题。\n\n参考资料仅包含一段通用笔记的简要介绍，内容为“这是一份通用笔记，用于测试批量导入功能”[^1^]，其中**未提及**批量导入功能的任何具体特性（如格式支持、去重规则、并发限制等）。因此，无法从现有资料中提取相关信息。\n\n如需了解该功能的特性，建议查阅产品官方文档或功能说明。"
+    },
+    {
+      "qid": 49,
+      "category": "general",
+      "question": "通用笔记中列出的三个细节是什么？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.6467,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记中列出的三个细节是什么？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 三个细节",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 三个细节",
+          "hits": 1,
+          "top_score": 0.6667,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "通用笔记 三个细节 内容",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "通用笔记 三个细节 内容",
+          "hits": 1,
+          "top_score": 0.6564,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "通用笔记中列出的三个细节是什么？",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用笔记 三个细节",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用笔记 三个细节",
+          "hits": 1,
+          "top_score": 0.6667,
+          "confidence": "low"
+        },
+        {
+          "step": 4,
+          "action": "query_rewrite",
+          "query": "通用笔记 三个细节 内容",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 5,
+          "action": "knowledge_search",
+          "query": "通用笔记 三个细节 内容",
+          "hits": 1,
+          "top_score": 0.6564,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据提供的参考资料，**无法回答“通用笔记中列出的三个细节是什么”**。\n\n参考资料仅包含一段简短介绍，内容为“这是一份通用笔记，用于测试批量导入功能”[^1^]，其中**并未列出任何三个细节**，也未提及具体条目或要点。因此，无法从现有信息中提取出您所询问的三个细节。\n\n如需准确回答，请提供包含该笔记完整内容的参考资料。",
+      "graph_answer_head": "根据提供的参考资料，**无法回答“通用笔记中列出的三个细节是什么”**。\n\n参考资料仅包含以下内容[^1^]：\n\n- 这是一份**通用笔记**，用于测试**批量导入功能**。\n\n其中并未列出任何三个具体细节，也未提及“三个细节”的相关信息。因此，无法从现有资料中提取所需答案。"
+    },
+    {
+      "qid": 50,
+      "category": "general",
+      "question": "项目里的通用测试笔记包含哪些内容？",
+      "sources_jaccard": 1.0,
+      "answer_ratio": 0.7184,
+      "consistent": true,
+      "legacy_files": [
+        "note.md"
+      ],
+      "graph_files": [
+        "note.md"
+      ],
+      "legacy_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "项目里的通用测试笔记包含哪些内容？",
+          "hits": 1,
+          "top_score": 0.7439,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用测试笔记 内容 清单",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用测试笔记 内容 清单",
+          "hits": 1,
+          "top_score": 0.7288,
+          "confidence": "low"
+        }
+      ],
+      "graph_steps": [
+        {
+          "step": 1,
+          "action": "knowledge_search",
+          "query": "项目里的通用测试笔记包含哪些内容？",
+          "hits": 1,
+          "top_score": 0.7439,
+          "confidence": "low"
+        },
+        {
+          "step": 2,
+          "action": "query_rewrite",
+          "query": "通用测试笔记 内容 清单",
+          "hits": 0,
+          "top_score": 0.0,
+          "confidence": "medium"
+        },
+        {
+          "step": 3,
+          "action": "knowledge_search",
+          "query": "通用测试笔记 内容 清单",
+          "hits": 1,
+          "top_score": 0.7288,
+          "confidence": "low"
+        }
+      ],
+      "legacy_answer_head": "根据参考资料，**通用测试笔记**的内容如下[^1^]：\n\n- **性质**：这是一份**通用笔记**，用于测试批量导入功能。\n- **具体内容**：参考资料中仅提供了上述介绍性描述，未包含笔记的详细正文或具体条目。\n\n因此，目前能确认的信息仅限于该笔记的用途（测试批量导入）和类型（通用笔记），**无法提供更详细的内容清单**。如需完整内容，建议查阅原始笔记文件。",
+      "graph_answer_head": "根据参考资料，**通用测试笔记**的内容如下[^1^]：\n\n- **性质**：这是一份**通用笔记**，用于测试批量导入功能。\n- **具体内容**：参考资料中未提供笔记的详细正文内容，仅包含上述说明。\n\n如需了解笔记的完整内容，建议查阅原始笔记文件。"
+    }
+  ]
+}

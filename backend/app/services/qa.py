@@ -9,7 +9,8 @@ from app.services.token_tracker import TokenTracker, TokenCost, estimate_tokens
 from app.services.agent import agent_query
 from app.services.harness import guard_input, fallback_error
 from app.services.retrieval import AdvancedRetriever
-from app.services.feedback import feedback_store
+from app.core.storage import feedback_store
+from app.graphs.qa_graph import qa_graph_query
 
 
 # ============================================================
@@ -153,6 +154,8 @@ def qa_query(
             "query": question,
             "collection_name": collection_name,
             "token_cost": dict(TokenCost()),
+            "reasoning_steps": [],
+            "queries": [question],
         }
 
     # 2. 准备检索和生成函数
@@ -168,14 +171,25 @@ def qa_query(
     ) -> tuple[str, TokenCost]:
         return generate_answer(q, context_chunks, hist, system_prompt, session_id)
 
-    # 3. Agent Loop
+    # 3. Agent Loop：QA_ENGINE=graph 走 LangGraph StateGraph（语义与
+    #    agent_query 一致），否则走现有手写 ReAct 循环（默认）
     try:
-        result = agent_query(
-            question=question,
-            retrieve_func=retrieve_func,
-            generate_func=generate_func,
-            history=history,
-        )
+        if settings.qa_engine == "graph":
+            result = qa_graph_query(
+                question=question,
+                collection_name=collection_name,
+                history=history,
+                top_k=top_k,
+                generate_func=generate_func,
+                system_prompt=system_prompt,
+            )
+        else:
+            result = agent_query(
+                question=question,
+                retrieve_func=retrieve_func,
+                generate_func=generate_func,
+                history=history,
+            )
     except Exception as e:
         return {
             "answer": fallback_error(str(e)),
@@ -183,6 +197,8 @@ def qa_query(
             "query": question,
             "collection_name": collection_name,
             "token_cost": dict(TokenCost()),
+            "reasoning_steps": [],
+            "queries": [question],
         }
 
     return {
@@ -191,4 +207,7 @@ def qa_query(
         "query": question,
         "collection_name": collection_name,
         "token_cost": dict(result["token_cost"]),
+        # 审计 #2：reasoning_steps / queries 透传给 routes 与前端推理路径面板
+        "reasoning_steps": result.get("reasoning_steps", []),
+        "queries": result.get("queries", [question]),
     }

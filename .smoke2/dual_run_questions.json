@@ -1,0 +1,252 @@
+[
+  {
+    "qid": 1,
+    "category": "frontend_bagu",
+    "question": "Vue 2 是如何实现响应式的？"
+  },
+  {
+    "qid": 2,
+    "category": "frontend_bagu",
+    "question": "Vue2 的响应式原理是什么？"
+  },
+  {
+    "qid": 3,
+    "category": "frontend_bagu",
+    "question": "Vue 2 用哪个 API 实现数据响应式？"
+  },
+  {
+    "qid": 4,
+    "category": "frontend_bagu",
+    "question": "Object.defineProperty 在 Vue 2 中起什么作用？"
+  },
+  {
+    "qid": 5,
+    "category": "frontend_bagu",
+    "question": "Vue 3 的响应式是怎么实现的？"
+  },
+  {
+    "qid": 6,
+    "category": "frontend_bagu",
+    "question": "Vue3 用什么实现响应式？"
+  },
+  {
+    "qid": 7,
+    "category": "frontend_bagu",
+    "question": "Vue 3 响应式原理里的 Proxy 是做什么的？"
+  },
+  {
+    "qid": 8,
+    "category": "frontend_bagu",
+    "question": "Vue 2 和 Vue 3 的响应式实现有什么区别？"
+  },
+  {
+    "qid": 9,
+    "category": "frontend_bagu",
+    "question": "请介绍一下 Vue 的响应式原理。"
+  },
+  {
+    "qid": 10,
+    "category": "frontend_bagu",
+    "question": "Vue 组件有哪些生命周期钩子？"
+  },
+  {
+    "qid": 11,
+    "category": "frontend_bagu",
+    "question": "Vue 的生命周期包括哪些阶段？"
+  },
+  {
+    "qid": 12,
+    "category": "frontend_bagu",
+    "question": "Vue 组件的 created 和 mounted 钩子分别是什么？"
+  },
+  {
+    "qid": 13,
+    "category": "frontend_bagu",
+    "question": "Vue 生命周期中的 updated 和 destroyed 有什么用？"
+  },
+  {
+    "qid": 14,
+    "category": "frontend_bagu",
+    "question": "列举 Vue 组件的生命周期钩子函数。"
+  },
+  {
+    "qid": 15,
+    "category": "frontend_bagu",
+    "question": "Vue 组件在什么时候会触发 mounted 钩子？"
+  },
+  {
+    "qid": 16,
+    "category": "frontend_bagu",
+    "question": "Vue 面试中响应式原理常考哪些点？"
+  },
+  {
+    "qid": 17,
+    "category": "frontend_bagu",
+    "question": "Vue 3 为什么用 Proxy 而不是 defineProperty？"
+  },
+  {
+    "qid": 18,
+    "category": "frontend_bagu",
+    "question": "说说 Vue 生命周期的主要内容。"
+  },
+  {
+    "qid": 19,
+    "category": "backend_bagu",
+    "question": "Redis 支持哪些数据类型？"
+  },
+  {
+    "qid": 20,
+    "category": "backend_bagu",
+    "question": "Redis 有哪些基本数据结构？"
+  },
+  {
+    "qid": 21,
+    "category": "backend_bagu",
+    "question": "Redis 的 String 和 Hash 类型分别是什么？"
+  },
+  {
+    "qid": 22,
+    "category": "backend_bagu",
+    "question": "Redis 的 List、Set 和 Sorted Set 分别是什么？"
+  },
+  {
+    "qid": 23,
+    "category": "backend_bagu",
+    "question": "列举 Redis 的五种数据类型。"
+  },
+  {
+    "qid": 24,
+    "category": "backend_bagu",
+    "question": "Redis 数据类型面试常考什么？"
+  },
+  {
+    "qid": 25,
+    "category": "backend_bagu",
+    "question": "Redis 支持哪几种持久化方式？"
+  },
+  {
+    "qid": 26,
+    "category": "backend_bagu",
+    "question": "Redis 的持久化机制有哪些？"
+  },
+  {
+    "qid": 27,
+    "category": "backend_bagu",
+    "question": "什么是 Redis 的 RDB 持久化？"
+  },
+  {
+    "qid": 28,
+    "category": "backend_bagu",
+    "question": "什么是 Redis 的 AOF 持久化？"
+  },
+  {
+    "qid": 29,
+    "category": "backend_bagu",
+    "question": "Redis 的 RDB 和 AOF 有什么区别？"
+  },
+  {
+    "qid": 30,
+    "category": "backend_bagu",
+    "question": "请介绍 Redis 的持久化方案。"
+  },
+  {
+    "qid": 31,
+    "category": "backend_bagu",
+    "question": "Redis 面试中持久化部分常问什么？"
+  },
+  {
+    "qid": 32,
+    "category": "backend_bagu",
+    "question": "Redis 的 Sorted Set 属于哪种数据类型？"
+  },
+  {
+    "qid": 33,
+    "category": "backend_bagu",
+    "question": "Redis 支持 Hash 类型吗？"
+  },
+  {
+    "qid": 34,
+    "category": "backend_bagu",
+    "question": "Redis 支持 Set 集合类型吗？"
+  },
+  {
+    "qid": 35,
+    "category": "backend_bagu",
+    "question": "Redis 有几种数据类型，分别叫什么？"
+  },
+  {
+    "qid": 36,
+    "category": "backend_bagu",
+    "question": "Redis 持久化的两种方式分别叫什么？"
+  },
+  {
+    "qid": 37,
+    "category": "general",
+    "question": "这份通用笔记是用来测试什么功能的？"
+  },
+  {
+    "qid": 38,
+    "category": "general",
+    "question": "通用笔记里提到批量导入支持哪些特性？"
+  },
+  {
+    "qid": 39,
+    "category": "general",
+    "question": "批量导入支持多源路径吗？"
+  },
+  {
+    "qid": 40,
+    "category": "general",
+    "question": "批量导入支持分类导入吗？"
+  },
+  {
+    "qid": 41,
+    "category": "general",
+    "question": "文本处理支持 Markdown 标题切分吗？"
+  },
+  {
+    "qid": 42,
+    "category": "general",
+    "question": "通用笔记的细节部分提到了哪些功能点？"
+  },
+  {
+    "qid": 43,
+    "category": "general",
+    "question": "笔记中说的多源路径是什么意思？"
+  },
+  {
+    "qid": 44,
+    "category": "general",
+    "question": "什么是分类导入？"
+  },
+  {
+    "qid": 45,
+    "category": "general",
+    "question": "Markdown 标题切分是做什么的？"
+  },
+  {
+    "qid": 46,
+    "category": "general",
+    "question": "通用笔记的介绍部分说了什么？"
+  },
+  {
+    "qid": 47,
+    "category": "general",
+    "question": "这个测试笔记支持哪些导入方式？"
+  },
+  {
+    "qid": 48,
+    "category": "general",
+    "question": "批量导入功能支持哪几个特性？"
+  },
+  {
+    "qid": 49,
+    "category": "general",
+    "question": "通用笔记中列出的三个细节是什么？"
+  },
+  {
+    "qid": 50,
+    "category": "general",
+    "question": "项目里的通用测试笔记包含哪些内容？"
+  }
+]

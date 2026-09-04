@@ -1,0 +1,54 @@
+{
+  "question": "Redis 支持哪些数据类型？",
+  "collection": "dual_run_kb",
+  "graph": {
+    "ok": true,
+    "answer_head": "# Redis 支持的数据类型\n\n根据参考资料，Redis 支持以下数据类型[^1^]：\n\n- **String**（字符串）\n- **Hash**（哈希）\n- **List**（列表）\n- **Set**（集合）\n- **Sorted Set**（有序集合）\n\n这些数据类型覆盖了常见的缓存、计数、队列、去重、排行榜等场景需求。如需了解每种类型的详细用法或底层实现，可进一步查阅相关文档。",
+    "source_files": [
+      "note.md",
+      "redis.md"
+    ],
+    "reasoning_steps": [
+      {
+        "step": 1,
+        "action": "knowledge_search",
+        "query": "Redis 支持哪些数据类型？",
+        "hits": 3,
+        "top_score": 0.0164,
+        "confidence": "low"
+      },
+      {
+        "step": 2,
+        "action": "query_rewrite",
+        "query": "Redis 数据类型 String Hash List Set Sorted Set 详解",
+        "hits": 0,
+        "top_score": 0.0,
+        "confidence": "medium"
+      },
+      {
+        "step": 3,
+        "action": "knowledge_search",
+        "query": "Redis 数据类型 String Hash List Set Sorted Set 详解",
+        "hits": 3,
+        "top_score": 0.0164,
+        "confidence": "low"
+      }
+    ],
+    "queries": [
+      "Redis 支持哪些数据类型？",
+      "Redis 数据类型 String Hash List Set Sorted Set 详解"
+    ]
+  },
+  "legacy": {
+    "failed_as_expected": true,
+    "answer_head": "系统处理出错：嵌入模型不可用（验收模拟：get_embed_model 被 monkeypatch）。请重试或联系管理员。",
+    "sources": [],
+    "reasoning_steps": []
+  },
+  "http_graph": {
+    "status_code": 200,
+    "ok": true,
+    "steps_count": 3
+  },
+  "pass": true
+}
