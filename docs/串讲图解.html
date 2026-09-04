@@ -227,7 +227,7 @@
     <text x="1032" y="330" text-anchor="middle" class="board-accent">_collections.json</text>
     <text x="1032" y="356" text-anchor="middle" class="board-sub">知识库注册表</text>
     <line x1="944" y1="388" x2="944" y2="388" stroke="none"/>
-    <text x="1032" y="412" text-anchor="middle" class="board-sub">230 chunks · 464K</text>
+    <text x="1032" y="412" text-anchor="middle" class="board-sub">238 chunks · 487K（实测）</text>
 
     <!-- 向量库 → 在线检索（读） -->
     <path d="M 944 400 L 340 400" stroke="#2B2419" stroke-width="1.5" fill="none" marker-end="url(#ar1)"/>
@@ -318,10 +318,10 @@
     <text x="580" y="214" text-anchor="middle" class="node-sub">score = Σ 1/(60+rank)，取 Top 15</text>
     <line x1="580" y1="226" x2="580" y2="266" stroke="#2B2419" stroke-width="1.5" marker-end="url(#ar2)"/>
 
-    <!-- BGE 交叉精排 -->
+    <!-- BGE 向量精排（加权融合） -->
     <rect x="360" y="270" width="440" height="64" rx="3" fill="#FFFBF0" stroke="#2B2419" stroke-width="1.5"/>
-    <text x="580" y="298" text-anchor="middle" class="node-title">BGE 交叉精排</text>
-    <text x="580" y="322" text-anchor="middle" class="node-sub">query×doc 点积重排 · chat 路径取 10（top_k×2）</text>
+    <text x="580" y="298" text-anchor="middle" class="node-title">BGE 向量精排</text>
+    <text x="580" y="322" text-anchor="middle" class="node-sub">0.7×余弦 + 0.3×归一化 RRF 加权融合 · chat 路径取 10（top_k×2）</text>
     <line x1="580" y1="334" x2="580" y2="374" stroke="#2B2419" stroke-width="1.5" marker-end="url(#ar2)"/>
 
     <!-- 阈值过滤 -->

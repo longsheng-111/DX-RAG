@@ -198,8 +198,8 @@
 
 1. BM25 召回 top 20
 2. 向量检索召回 top 20
-3. RRF（倒数排名融合）得到 top 15
-4. BGE 向量交叉相似度重排序，取 top 5
+3. RRF（倒数排名融合，k=60）得到 top 15
+4. BGE 向量精排：余弦相似度（权重 0.7）与归一化 RRF 分数（权重 0.3）加权融合排序，取 top 5；余弦相似度低于 0.65 的结果被过滤
 
 > 注：早期版本为「关键词 30% + 向量 70%」线性加权融合，现已升级为上述 BM25 + RRF 方案。
 
@@ -566,7 +566,7 @@ def vector_search(self, query: str, top_k: int = 10) -> List[tuple[str, str, flo
     # 1. 加载嵌入模型（BGE 中文模型）
     model = get_model()
 
-    # 2. 将查询转为向量（384 维）
+    # 2. 将查询转为向量（512 维）
     query_vector = model.encode(query, normalize_embeddings=True).tolist()
 
     # 3. 在向量数据库中检索
@@ -582,7 +582,7 @@ def vector_search(self, query: str, top_k: int = 10) -> List[tuple[str, str, flo
 |-------|-----|------|
 | 相似度度量 | Cosine | 归一化向量 + 内积，等价余弦相似度 |
 | 索引类型 | FAISS IndexFlatIP | 精确内积检索（非 HNSW 近似索引） |
-| 向量维度 | 384 | BGE 模型输出维度 |
+| 向量维度 | 512 | BGE 模型输出维度 |
 
 ### 5.4 加权融合策略
 
