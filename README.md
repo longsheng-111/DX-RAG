@@ -1,6 +1,6 @@
 # DX-RAG · 作业本上的 RAG 冒险
 
-> 仓库地址：https://github.com/longsheng-111/RAG-TEST
+> 仓库地址：https://github.com/longsheng-111/DX-RAG
 
 一个以「暖纸作业本 × 复古 RPG」为视觉世界观的知识库问答系统：把你的课程资料、面试八股文放进书包（知识库），然后向它提问、纠错、存档，甚至开一场 AI 考官的模拟面试。检索增强生成（RAG）负责找线索，DeepSeek 负责写答案。
 
