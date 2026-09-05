@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     # graph=graphs/qa_graph.py 的 LangGraph StateGraph 实现
     qa_engine: str = "legacy"
 
+    # ---- 考官引擎（阶段 3：考官模式 LangGraph 化） ----
+    # legacy=routes.py 手写 if/else 状态机（默认，双跑验证通过前不动默认行为）；
+    # graph=graphs/exam_graph.py 的 LangGraph StateGraph 实现（interrupt/resume）
+    exam_engine: str = "legacy"
+
     # ---- 嵌入模型 ----
     embed_model: str = "BAAI/bge-small-zh-v1.5"
 

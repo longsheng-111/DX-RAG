@@ -52,6 +52,7 @@ from app.services.examiner import (
     MAX_QUESTIONS,
     MAX_FOLLOW_UP,
 )
+from app.graphs.exam_graph import exam_graph_start, exam_graph_next
 
 router = APIRouter(prefix="/api")
 
@@ -610,6 +611,12 @@ async def create_feedback(req: FeedbackRequest):
 #  考官模式（模拟面试）
 # ============================================================
 
+def _append_exam_messages(session, messages: list[dict]) -> None:
+    """考官模式消息累加唯一入口（审计 #5：配合图内统一记账，杜绝双计）"""
+    for m in messages:
+        session.add_message(m["role"], m["content"], token_cost=m.get("token_cost"))
+
+
 @router.post("/exam/start")
 async def exam_start(req: ExamStartRequest):
     """开启一场考官模式面试，配置从会话中读取"""
@@ -635,6 +642,32 @@ async def exam_start(req: ExamStartRequest):
 
     if not chunks:
         raise HTTPException(status_code=400, detail="当前知识库没有相关资料，请补充后重试")
+
+    # EXAM_ENGINE=graph：走 LangGraph exam_graph（语义与下方 legacy 一致），默认 legacy 不变
+    if settings.exam_engine == "graph":
+        result = exam_graph_start(
+            session_id=session.session_id,
+            target_position=target_position,
+            topic=topic,
+            collection_name=collection_name,
+            context_chunks=chunks,
+        )
+        if result["error"]:
+            # 出题失败：报错文案不落盘为题目（审计 #6）
+            raise HTTPException(status_code=result["error_status"], detail=result["error"])
+        session.exam_state = result["exam_state"]
+        _append_exam_messages(session, result["new_messages"])
+        session_manager.save_session(session)
+        return {
+            "session_id": session.session_id,
+            "status": "asking",
+            "question_index": 1,
+            "current_question": result["question"],
+            "current_expectations": result["expectations"],
+            "follow_up_count": 0,
+            "scores": [],
+            "token_cost": dict(result["token_cost"]),
+        }
 
     # 生成第一题
     try:
@@ -699,6 +732,74 @@ async def exam_next(session_id: str, req: ExamNextRequest):
         raise HTTPException(status_code=400, detail="面试已结束")
     if not state.get("current_question"):
         raise HTTPException(status_code=400, detail="当前没有待回答的题目")
+
+    # EXAM_ENGINE=graph：整段作答流程交给 exam_graph 状态机（语义与下方 legacy 一致）
+    if settings.exam_engine == "graph":
+        # 空答案预检与 legacy 顺序一致：end 之外的动作先校验再检索
+        if req.action != "end":
+            _answer = "不知道" if req.action == "give_up" else req.answer.strip()
+            if not _answer:
+                raise HTTPException(status_code=400, detail="回答不能为空")
+            # 检索参考资料：query 由 topic 与当前题目拼接；结果按 query 缓存到
+            # exam_state，同一道题的追问期间不重复全量检索（同 legacy）
+            retrieval_query = f"{state['topic']} {state['current_question']}"
+            retrieval_cache = state.setdefault("retrieval_cache", {})
+            chunks = retrieval_cache.get(retrieval_query)
+            if chunks is None:
+                from app.services.retrieval import AdvancedRetriever
+                retriever = AdvancedRetriever(state["collection_name"])
+                chunks = retriever.hybrid_search(retrieval_query, top_k=req.top_k)
+                retrieval_cache[retrieval_query] = chunks
+        else:
+            retrieval_cache = None
+            chunks = []
+        result = exam_graph_next(
+            session_id=session_id,
+            exam_state=state,
+            action=req.action,
+            answer=req.answer,
+            context_chunks=chunks,
+        )
+        if result["error"]:
+            # 评分/出题失败：不落盘任何评分与消息（同 legacy 的 502 语义）
+            raise HTTPException(status_code=result["error_status"], detail=result["error"])
+        new_state = result["exam_state"]
+        if retrieval_cache is not None:
+            new_state["retrieval_cache"] = retrieval_cache
+        if result["cheating_detected"]:
+            # 反作弊命中：与 legacy 一致——不落盘，直接返回 0 分评价
+            return {
+                "session_id": session_id,
+                "status": new_state["status"],
+                "question_index": new_state["question_index"],
+                "current_question": new_state["current_question"],
+                "current_expectations": new_state["current_expectations"],
+                "reference_points": new_state.get("reference_points", []),
+                "follow_up_count": new_state["follow_up_count"],
+                "evaluation": result["evaluation"],
+                "summary": None,
+                "scores": new_state.get("scores", []),
+                "weak_points": new_state.get("weak_points", []),
+                "cheating_detected": True,
+                "token_cost": dict(result["token_cost"]),
+            }
+        session.exam_state = new_state
+        _append_exam_messages(session, result["new_messages"])
+        session_manager.save_session(session)
+        return {
+            "session_id": session_id,
+            "status": new_state["status"],
+            "question_index": new_state["question_index"],
+            "current_question": new_state["current_question"],
+            "current_expectations": new_state["current_expectations"],
+            "reference_points": new_state.get("reference_points", []),
+            "follow_up_count": new_state["follow_up_count"],
+            "evaluation": result["evaluation"],
+            "summary": result["summary"],
+            "scores": new_state["scores"],
+            "weak_points": new_state.get("weak_points", []),
+            "token_cost": dict(result["token_cost"]),
+        }
 
     # action == "end"：显式结束面试，跳过反作弊与评分，直接生成总结收尾
     if req.action == "end":
