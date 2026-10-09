@@ -197,8 +197,10 @@ def add_texts(
     批量添加文本向量到知识库。
     - texts / metadatas / ids 平行数组必须等长，不等长抛 ValueError（审计 P2 修复）
     - 知识库不存在时自动创建（与文件版一致）
-    - 同一知识库内 file_name 已存在时抛 ValueError（UNIQUE 约束语义；
-      需要重入库请先 delete_file，与 routes.py 现行流程一致）
+    - 同一知识库内 file_name 已存在且带 chunks 时抛 ValueError（UNIQUE 约束语义；
+      需要重入库请先 delete_file，与 routes.py 现行流程一致）；
+      无 chunks 的既有 File 行（阶段 4 队列化上传预建的 pending/processing 行）
+      则直接复用并转 done
     """
     if not texts:
         return 0
@@ -229,18 +231,32 @@ def add_texts(
                     .first()
                 )
                 if existing is not None:
-                    raise ValueError(
-                        f"文件 '{file_name}' 已存在于知识库 '{collection_name}'，"
-                        "请先 delete_file 再重新入库"
+                    has_chunks = (
+                        session.query(Chunk.id)
+                        .filter(Chunk.file_id == existing.id)
+                        .first()
+                        is not None
                     )
-                file_row = File(
-                    collection_id=col.id,
-                    file_name=file_name,
-                    storage_path=md.get("source", "") or "",
-                    status="done",
-                )
-                session.add(file_row)
-                session.flush()  # 立刻拿到 file_row.id 供 chunks 外键使用
+                    if has_chunks:
+                        raise ValueError(
+                            f"文件 '{file_name}' 已存在于知识库 '{collection_name}'，"
+                            "请先 delete_file 再重新入库"
+                        )
+                    # 队列化摄入（阶段 4）：File 行由上传接口预建（pending/processing），
+                    # chunks 已被 prepare_ingest 清空，此处复用该行并转 done
+                    existing.storage_path = md.get("source", "") or existing.storage_path
+                    existing.status = "done"
+                    existing.error = None
+                    file_row = existing
+                else:
+                    file_row = File(
+                        collection_id=col.id,
+                        file_name=file_name,
+                        storage_path=md.get("source", "") or "",
+                        status="done",
+                    )
+                    session.add(file_row)
+                    session.flush()  # 立刻拿到 file_row.id 供 chunks 外键使用
                 file_rows[file_name] = file_row
 
             chunks.append(

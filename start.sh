@@ -93,6 +93,14 @@ $PYTHON -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd "$DIR"
 
+# 启动摄入 worker (后台，阶段 4：上传队列消费者)
+# 需要 Redis：docker compose up -d redis，或本地 redis-server；未启动时上传接口返回 503
+echo "  启动摄入 worker (arq)..."
+cd "$DIR/backend"
+$PYTHON -m arq app.worker.WorkerSettings &
+WORKER_PID=$!
+cd "$DIR"
+
 # 启动前端 (后台)
 echo "  启动前端 (port 3000)..."
 cd "$DIR/frontend"
@@ -123,5 +131,5 @@ elif command -v xdg-open &>/dev/null; then
 fi
 
 # 等待子进程
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
+trap "kill $BACKEND_PID $WORKER_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
 wait

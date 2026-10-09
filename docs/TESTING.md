@@ -323,3 +323,11 @@ jobs:
 4. **新增依赖引入**：定为**分批批准**——`pytest` + `httpx` 现在引入；`vitest`（连同 `@testing-library/react` + `jsdom`）待 QAPanel 拆分后引入；`playwright` 暂缓、后续单独立项；`pytest-mock` 可降级为标准库 `unittest.mock`，由实施时决定。理由：引入节奏与前置条件（QAPanel 拆分、单独立项）对齐，不一次性扩大依赖面。
 5. **QAPanel 组件级单测的前置**：同意以体检报告 2.3 的结构拆分为前置，**纯结构拆分、不改逻辑**。理由：不拆分则 2605 行组件的单测维护成本高于收益；纯结构拆分风险可控。
 6. **面试魔法字符串协议化**（"不知道"/"结束"，体检报告 3.7）：定为**执行**，前后端同改，**测试用例与协议变更同 PR 提交**。理由：协议与用例原子化同改，避免契约切换中间态的测试漂移。
+
+## 附：阶段 4 并发压测（2026-10-09）
+
+摄入队列化的并发压测资产已入库：locust 脚本 `backend/tests/load/locustfile.py`
+（S1 基线 / S2 上传干扰 / S3 考官混合三场景，用法见文件 docstring），
+压测依赖在 `backend/requirements-dev.txt`（locust，不进 runtime 镜像），
+结果与调优记录见 `docs/压测报告.md`。队列化单元测试在
+`backend/tests/test_ingest_queue.py`（job store CRUD / 上传契约 / stale 兜底 / worker 分支）。

@@ -21,6 +21,7 @@ if settings.storage_backend == "postgres":
     # ========================================================
     from app.db.session_repository import session_repository as session_manager
     from app.db.feedback_repository import feedback_repository as feedback_store
+    from app.db.job_repository import job_store
     from app.db.vector_repository import (
         list_collections,
         create_collection,
@@ -43,6 +44,7 @@ elif settings.storage_backend == "file":
     # ========================================================
     from app.core.session import session_manager
     from app.services.feedback import feedback_store
+    from app.core.job_store import job_store
     from app.core.vector_store import (
         list_collections,
         create_collection,

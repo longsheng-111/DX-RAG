@@ -315,12 +315,24 @@ def _split_recursive(text: str, separators: list[str], chunk_size: int, chunk_ov
 #  完整处理流水线
 # ============================================================
 
-def process_file(file_path: str, collection_name: str) -> dict:
+def process_file(
+    file_path: str,
+    collection_name: str,
+    progress_cb=None,
+) -> dict:
     """
     完整文件处理流水线：读取 → 切片 → 嵌入 → 入库
-    返回处理的 chunk 信息
+    返回处理的 chunk 信息。
+
+    progress_cb：可选进度回调（阶段 4 队列化），签名 cb(progress: float)，
+    在阶段边界调用（0.2 读取完成 / 0.4 切分完成 / 0.95 入库完成）；
+    回调内抛异常会中断流水线（worker 用它实现撤单）。
     """
     from app.core.storage import add_texts
+
+    def report(p: float) -> None:
+        if progress_cb is not None:
+            progress_cb(p)
 
     path = Path(file_path)
     if not path.exists():
@@ -328,12 +340,14 @@ def process_file(file_path: str, collection_name: str) -> dict:
 
     # 1. 读取文本
     raw_text = read_text_from_file(path)
+    report(0.2)
 
     if not raw_text.strip():
         raise ValueError(f"文件内容为空: {path.name}")
 
     # 2. 切分
     chunks = split_text(raw_text, path.name)
+    report(0.4)
 
     if not chunks:
         raise ValueError(f"切分结果为空: {path.name}")
@@ -350,6 +364,7 @@ def process_file(file_path: str, collection_name: str) -> dict:
     ]
 
     count = add_texts(chunks, metadatas, collection_name)
+    report(0.95)
 
     return {
         "file_name": path.name,

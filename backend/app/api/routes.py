@@ -7,6 +7,7 @@ import os
 import re
 
 logger = logging.getLogger(__name__)
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Literal
 
@@ -38,8 +39,10 @@ from app.core.storage import (
     rename_collection,
     get_files,
     delete_file,
+    # 阶段 4：摄入任务存储（file=JSON / postgres=ingest_jobs 表）
+    job_store,
 )
-from app.services.ingest import process_file
+from app.services.ingest_queue import enqueue_ingest
 from app.services.qa import qa_query
 from app.services.title_generator import generate_session_title
 from app.services.examiner import (
@@ -227,26 +230,73 @@ async def upload_file(
 
     # 处理入库；失败时清理已落盘的残留文件
     try:
-        # 同知识库已存在同名文件：先删旧向量，避免重复入库
-        existing_names = {f["file_name"] for f in get_files(collection_name)}
-        if safe_name in existing_names:
-            delete_file(safe_name, collection_name)
+        # 阶段 4 队列化：同名重传的旧摄入任务若还在排队/执行，先撤单，
+        # 防止旧任务把新文件内容重复入库；旧向量清理由 worker 启动时做
+        active = job_store.find_active_job(safe_name, collection_name)
+        if active:
+            job_store.update_job(
+                active["job_id"],
+                status="cancelled",
+                error="被同名重传撤单",
+                finished_at=datetime.now().isoformat(),
+            )
 
-        result = process_file(str(dest_path), collection_name)
-    except ValueError as e:
+        job = job_store.create_job(safe_name, collection_name, str(dest_path))
+        try:
+            await enqueue_ingest(job["job_id"])
+        except Exception:
+            # Redis/队列不可达：任务标 failed、清残留文件，返回 503
+            logger.exception("Failed to enqueue ingest job")
+            job_store.update_job(
+                job["job_id"],
+                status="failed",
+                error="摄入队列不可用",
+                finished_at=datetime.now().isoformat(),
+            )
+            dest_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=503, detail="摄入队列不可用，请稍后重试")
+    except HTTPException:
+        raise
+    except Exception:
         dest_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        dest_path.unlink(missing_ok=True)
-        logger.exception("Failed to process uploaded file")
+        logger.exception("Failed to create ingest job")
         raise HTTPException(status_code=500, detail="Internal server error")
 
     return {
-        "message": "上传并入库成功",
-        "file_name": result["file_name"],
-        "chunks": result["chunks"],
-        "collection_name": result["collection_name"],
+        "message": "文件已接收，摄入任务已排队",
+        "job_id": job["job_id"],
+        "file_name": safe_name,
+        "collection_name": collection_name,
+        "status": "queued",
     }
+
+
+@router.get("/ingest-jobs/{job_id}")
+async def get_ingest_job(job_id: str):
+    """查询摄入任务状态（前端上传后轮询，2s 间隔）"""
+    try:
+        job = job_store.get_job(job_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # worker 宕机兜底：running 超过阈值分钟数无心跳（updated_at 不变），
+    # 标记 failed，用户重新上传即可重新排队
+    if job.get("status") == "running":
+        heartbeat = job.get("updated_at") or job.get("created_at")
+        if heartbeat:
+            last = datetime.fromisoformat(heartbeat)
+            now = datetime.now(last.tzinfo) if last.tzinfo else datetime.now()
+            if (now - last) > timedelta(minutes=settings.ingest_job_stale_minutes):
+                job = job_store.update_job(
+                    job_id,
+                    status="failed",
+                    error=f"worker 超过 {settings.ingest_job_stale_minutes} 分钟无心跳，判定为宕机",
+                    finished_at=now.isoformat(),
+                ) or job
+
+    return job
 
 
 # ============================================================
@@ -265,7 +315,10 @@ async def query(req: QueryRequest):
         raise HTTPException(status_code=429, detail=budget_error)
 
     try:
-        result = qa_query(
+        # 与 /chat 一致扔进线程池：qa_query 内含同步 LLM 调用与向量检索（秒级），
+        # 直接在事件循环里跑会阻塞全部并发请求（阶段 4 压测 S1 实测暴露）
+        result = await asyncio.to_thread(
+            qa_query,
             question=req.question,
             collection_name=req.collection_name,
             top_k=req.top_k,
@@ -621,6 +674,12 @@ def _append_exam_messages(session, messages: list[dict]) -> None:
 @router.post("/exam/start")
 async def exam_start(req: ExamStartRequest):
     """开启一场考官模式面试，配置从会话中读取"""
+    # 实现扔进线程池：内含检索与同步 LLM 调用（秒级），在事件循环里直接跑
+    # 会阻塞全部并发请求（与 /query 同理，阶段 4 压测 S1 实测暴露）
+    return await asyncio.to_thread(_exam_start_impl, req)
+
+
+def _exam_start_impl(req: ExamStartRequest):
     session = session_manager.get_session(req.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
@@ -724,6 +783,11 @@ async def exam_start(req: ExamStartRequest):
 @router.post("/exam/{session_id}/next")
 async def exam_next(session_id: str, req: ExamNextRequest):
     """提交答案并进入追问、下一题或总结"""
+    # 同 exam_start：实现扔进线程池，避免同步 LLM 调用阻塞事件循环
+    return await asyncio.to_thread(_exam_next_impl, session_id, req)
+
+
+def _exam_next_impl(session_id: str, req: ExamNextRequest):
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
@@ -1132,6 +1196,20 @@ async def delete_file_api(
     """删除知识库中的文件及向量数据"""
     # 路径安全校验在 try 之外，HTTPException 原样向上抛
     local_path = _safe_file_path(file_name)
+
+    # 阶段 4：若该文件的摄入任务还在排队/执行，先撤单再删（撤单后 worker 会在
+    # 下一个阶段边界中止；已撤单的 queued 任务被 worker 直接跳过）
+    try:
+        active = job_store.find_active_job(file_name, collection_name)
+        if active:
+            job_store.update_job(
+                active["job_id"],
+                status="cancelled",
+                error="文件已删除，任务撤单",
+                finished_at=datetime.now().isoformat(),
+            )
+    except Exception:
+        logger.warning("撤单摄入任务失败，继续删除流程", exc_info=True)
 
     try:
         result = delete_file(file_name, collection_name)

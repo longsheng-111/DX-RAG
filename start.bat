@@ -103,6 +103,10 @@ echo   Ports cleaned
 REM Start Backend in new window
 start "DX-RAG-Backend" cmd /k "cd /d %cd%\backend && %PYCMD% -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+REM Start ingest worker in new window (stage 4: upload queue consumer)
+REM 需要 Redis：docker compose up -d redis，或本地 redis-server；未启动时上传接口返回 503
+start "DX-RAG-Worker" cmd /k "cd /d %cd%\backend && %PYCMD% -m arq app.worker.WorkerSettings"
+
 echo   Waiting for backend to start...
 ping -n 6 127.0.0.1 >nul
 

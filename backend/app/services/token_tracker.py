@@ -9,6 +9,7 @@ from typing import Optional
 from openai import OpenAI
 
 from app.core.config import settings
+from app.services.llm_gate import call_with_gate
 
 # LLM 调用默认超时（秒），防止 API 无响应时请求无限挂起
 LLM_TIMEOUT = 60.0
@@ -50,12 +51,16 @@ class TokenTracker:
         self.client = client
 
     def chat_completion(self, timeout: float = LLM_TIMEOUT, **kwargs):
-        """调用 LLM 并返回 (response, token_cost)，默认 60s 超时"""
+        """调用 LLM 并返回 (response, token_cost)，默认 60s 超时。
+
+        统一经 llm_gate 的全局信号量与 429 退避重试（阶段 4），
+        一处接入，问答/考官/压缩/标题全链路生效。
+        """
         if self.client is None:
             raise RuntimeError("TokenTracker 未配置 OpenAI client")
 
         kwargs.setdefault("timeout", timeout)
-        response = self.client.chat.completions.create(**kwargs)
+        response = call_with_gate(lambda: self.client.chat.completions.create(**kwargs))
 
         usage = response.usage
         if usage:

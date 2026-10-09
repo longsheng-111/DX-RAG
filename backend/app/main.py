@@ -17,12 +17,14 @@ from app.api.routes import router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时初始化目录，关闭时无需额外清理"""
+    """应用生命周期：启动时初始化目录，关停时释放 ARQ 连接池"""
     settings.ensure_dirs()
     print(f"[Startup] 应用启动: {settings.app_name}")
     print(f"[Startup] 上传目录: {settings.upload_dir}")
     print(f"[Startup] 向量数据库: {settings.vector_persist_dir}")
     yield
+    from app.services.ingest_queue import close_pool
+    await close_pool()
 
 
 def create_app() -> FastAPI:

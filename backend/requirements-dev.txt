@@ -1,0 +1,3 @@
+# 开发与压测工具（不进 Docker 镜像 / runtime requirements）
+# 安装：pip install -r requirements-dev.txt
+locust>=2.15,<2.25

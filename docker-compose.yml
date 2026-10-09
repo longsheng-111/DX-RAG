@@ -21,11 +21,15 @@ services:
       # 阶段 1：数据库存储（compose 中显式覆盖默认的 file 后端）
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/dxrag
       - STORAGE_BACKEND=postgres
+      # 阶段 4：摄入任务队列（ARQ broker）
+      - REDIS_URL=redis://redis:6379/0
       # 模型缓存持久化：容器内下载走 HF 镜像端点（vector_store.py:14-15），HF_HOME 为关键项
       - MODELSCOPE_CACHE=/app/models
       - HF_HOME=/app/models/hf
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -35,6 +39,37 @@ services:
       retries: 3
       # 首次启动需下载嵌入模型（数百 MB），预热完成前 uvicorn 不监听端口
       start_period: 300s
+
+  # 摄入 worker（阶段 4：ARQ 消费进程，同 backend 镜像和代码，仅 CMD 不同）
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dx-rag-worker
+    env_file: .env
+    command: ["arq", "app.worker.WorkerSettings"]
+    volumes:
+      - vector_data:/app/vector_db
+      - model_cache:/app/models
+      - uploads_data:/app/uploads
+      - session_data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - VECTOR_PERSIST_DIR=/app/vector_db
+      - SESSION_DIR=/app/data/sessions
+      - UPLOAD_DIR=/app/uploads
+      - EMBED_MODEL=BAAI/bge-small-zh-v1.5
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/dxrag
+      - STORAGE_BACKEND=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - MODELSCOPE_CACHE=/app/models
+      - HF_HOME=/app/models/hf
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
@@ -73,12 +108,17 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Redis（阶段 4 任务队列/缓存用，先备着）
+  # Redis（阶段 4：摄入任务队列 broker）
   redis:
     image: redis:7-alpine
     container_name: dx-rag-redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:

@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     # ---- 会话数据 ----
     session_dir: str = _safe_data_dir("data/sessions")
 
+    # ---- 摄入任务（阶段 4：队列化） ----
+    # file 存储后端的 job 持久化目录（postgres 后端用 ingest_jobs 表，不用该目录）
+    job_dir: str = _safe_data_dir("data/ingest_jobs")
+    # ARQ/Redis broker 地址；docker-compose 内为 redis://redis:6379/0
+    redis_url: str = "redis://localhost:6379/0"
+    # running 状态超过该分钟数无心跳视为 worker 已死，读取时标记 failed
+    ingest_job_stale_minutes: int = 15
+
     # ---- 数据库（阶段 1：PostgreSQL + pgvector） ----
     # SQLAlchemy 连接串；本机测试可用 sqlite:///<绝对路径> 指向临时文件
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/dxrag"
@@ -114,6 +122,10 @@ class Settings(BaseSettings):
     max_output_tokens: int = 1024
     max_total_tokens_per_session: int = 50000
     context_compression_threshold: float = 0.6  # 超过 60% 触发上下文压缩
+
+    # ---- LLM 并发保护（阶段 4） ----
+    # 全局信号量上限：worker 与 API 共用，防止并发请求打爆上游限额
+    llm_max_concurrent: int = 8
 
     # ---- 检索过滤 ----
     # BGE / 向量检索的余弦相似度阈值，低于此值认为检索结果不相关

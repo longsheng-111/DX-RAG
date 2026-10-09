@@ -21,5 +21,8 @@ sqlalchemy>=2.0
 alembic>=1.13
 psycopg2-binary>=2.9
 pgvector>=0.2
+# 阶段 4：摄入任务队列（ARQ + Redis）
+arq>=0.26,<0.27
+redis>=4.5,<6
 # LangGraph：Python 3.9 兼容上限为 0.2.x（0.3+ 要求 Python>=3.10），锁定当前已验证版本
 langgraph==0.2.76

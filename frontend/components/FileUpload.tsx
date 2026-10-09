@@ -35,6 +35,7 @@ export default function FileUpload({ collectionName }: Props) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [targetCollection, setTargetCollection] = useState(collectionName);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState<{
     file_name: string; chunks: number; collection_name: string;
   } | null>(null);
@@ -49,6 +50,34 @@ export default function FileUpload({ collectionName }: Props) {
   useEffect(() => { fetchCollections(); }, [fetchCollections]);
   useEffect(() => { setTargetCollection(collectionName); }, [collectionName]);
 
+  // 阶段 4：上传接口改为异步队列——提交后拿到 job_id 立即返回，
+  // 这里按 2s 间隔轮询任务状态直到 done / failed / cancelled
+  const pollJob = useCallback((jobId: string): Promise<any> => {
+    const startedAt = Date.now();
+    return new Promise((resolve, reject) => {
+      const timer = setInterval(async () => {
+        try {
+          const res = await axios.get(`/api/ingest-jobs/${jobId}`);
+          const job = res.data;
+          setProgress(Math.round((job.progress || 0) * 100));
+          if (job.status === 'done') {
+            clearInterval(timer);
+            resolve(job);
+          } else if (job.status === 'failed' || job.status === 'cancelled') {
+            clearInterval(timer);
+            reject(new Error(job.error || '摄入任务失败'));
+          } else if (Date.now() - startedAt > 30 * 60 * 1000) {
+            clearInterval(timer);
+            reject(new Error('摄入超时（30 分钟），请稍后在文件管理中确认结果'));
+          }
+        } catch (err: any) {
+          clearInterval(timer);
+          reject(err);
+        }
+      }, 2000);
+    });
+  }, []);
+
   const uploadProps: UploadProps = {
     name: 'file', multiple: false, showUploadList: false,
     accept: '.txt,.md,.csv,.json,.log,.pdf,.docx,.xlsx,.xlsm,.xltx,.xltm',
@@ -57,7 +86,7 @@ export default function FileUpload({ collectionName }: Props) {
       return true;
     },
     customRequest: async ({ file, onSuccess, onError }) => {
-      setUploading(true); setUploadResult(null);
+      setUploading(true); setUploadResult(null); setProgress(0);
       const formData = new FormData();
       formData.append('file', file as File);
       formData.append('collection_name', targetCollection);
@@ -65,12 +94,19 @@ export default function FileUpload({ collectionName }: Props) {
         const res = await axios.post('/api/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setUploadResult(res.data);
-        message.success(`上传完成！共 ${res.data.chunks} 个切片`);
-        onSuccess?.(res.data, undefined as any);
+        // 上传已落盘，摄入在后台队列执行；轮询等待最终结果
+        const job = await pollJob(res.data.job_id);
+        const result = {
+          file_name: job.file_name,
+          chunks: job.chunk_count ?? 0,
+          collection_name: job.collection_name,
+        };
+        setUploadResult(result);
+        message.success(`上传完成！共 ${result.chunks} 个切片`);
+        onSuccess?.(result as any, undefined as any);
         fetchCollections();
       } catch (err: any) {
-        message.error(err.response?.data?.detail || '上传失败');
+        message.error(err.response?.data?.detail || err.message || '上传失败');
         onError?.(err as any);
       } finally { setUploading(false); }
     },
@@ -127,9 +163,9 @@ export default function FileUpload({ collectionName }: Props) {
           <div style={{ marginTop: 20 }}>
             <Progress
               className="op-progress"
-              percent={99}
+              percent={progress}
               status="active"
-              format={() => '处理中...'}
+              format={(p) => (p && p >= 95 ? '即将完成...' : `摄入中 ${p ?? 0}%`)}
               strokeColor="var(--brand)"
               trailColor="var(--bg-sunken)"
               strokeLinecap="butt"

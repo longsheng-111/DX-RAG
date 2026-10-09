@@ -202,7 +202,7 @@ class Feedback(Base):
 
 
 class IngestJob(Base):
-    """摄入任务（上传接口只入库 job，实际摄入由后续波次的执行器消费）"""
+    """摄入任务（上传接口只入库 job，实际摄入由阶段 4 的 ARQ worker 消费）"""
 
     __tablename__ = "ingest_jobs"
 
@@ -210,12 +210,15 @@ class IngestJob(Base):
     file_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("files.id", ondelete="CASCADE"), nullable=False
     )
-    status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")  # queued/running/done/failed
+    # queued/running/done/failed/cancelled
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")
     progress: Mapped[float] = mapped_column(default=0.0, nullable=False)
     error: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # 兼作 worker 心跳：worker 每次推进进度都刷新它，超时不变视为 worker 已死
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     file: Mapped[File] = relationship(back_populates="ingest_jobs")
