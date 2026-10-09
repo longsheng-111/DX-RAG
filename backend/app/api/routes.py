@@ -585,6 +585,7 @@ async def chat(req: ChatRequest):
         "query": req.question,
         "reasoning_steps": result.get("reasoning_steps", []),
         "queries": result.get("queries", [req.question]),
+        "degraded": result.get("degraded", False),
     }
 
 

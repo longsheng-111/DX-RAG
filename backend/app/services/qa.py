@@ -156,6 +156,7 @@ def qa_query(
             "token_cost": dict(TokenCost()),
             "reasoning_steps": [],
             "queries": [question],
+            "degraded": False,
         }
 
     # 2. 准备检索和生成函数
@@ -199,6 +200,7 @@ def qa_query(
             "token_cost": dict(TokenCost()),
             "reasoning_steps": [],
             "queries": [question],
+            "degraded": False,
         }
 
     return {
@@ -210,4 +212,6 @@ def qa_query(
         # 审计 #2：reasoning_steps / queries 透传给 routes 与前端推理路径面板
         "reasoning_steps": result.get("reasoning_steps", []),
         "queries": result.get("queries", [question]),
+        # 检索单路降级标记（如嵌入模型不可用仅剩 BM25），供响应透传
+        "degraded": retriever.degraded,
     }

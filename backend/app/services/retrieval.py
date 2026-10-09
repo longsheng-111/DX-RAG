@@ -7,10 +7,13 @@
 3. RRF 融合得到 top 15
 4. 向量精排：余弦相似度（0.7）与归一化 RRF 分数（0.3）加权融合排序，取 top 5
 """
+import logging
 import re
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 try:
     from rank_bm25 import BM25Okapi
@@ -50,6 +53,9 @@ class AdvancedRetriever:
         self.ids: list[str] = []
         self.tokenized_docs: list[list[str]] = []
         self.bm25: Optional[BM25Okapi] = None
+        # 降级标记：单路召回异常时置位，由 qa 层透传给响应（审计修复 #5）
+        self.degraded = False
+        self.degraded_reason: Optional[str] = None
         self._build_index()
 
     def _tokenize(self, text: str) -> list[str]:
@@ -216,14 +222,29 @@ class AdvancedRetriever:
         top_k: int = 5,
     ) -> list[tuple[str, str, float]]:
         """完整混合检索：双路召回 → RRF 融合 → 向量精排加权融合"""
-        # 1. 多路召回
-        bm25_results = self.bm25_search(query, top_k=20)
-        vec_results = self.vector_search(query, top_k=20)
+        # 1. 多路召回：两路各自独立兜底——单路异常（如嵌入模型不可用）时降级为
+        #    仅剩的另一路结果并标记 degraded，两路都失败才返回空走"检索为空"兜底
+        try:
+            bm25_results = self.bm25_search(query, top_k=20)
+        except Exception as e:
+            logger.warning("BM25 召回失败，降级为仅向量召回: %s", e)
+            bm25_results = []
+            self.degraded = True
+            self.degraded_reason = f"BM25 召回失败: {e}"
 
-        # 2. RRF 融合
+        try:
+            vec_results = self.vector_search(query, top_k=20)
+        except Exception as e:
+            logger.warning("向量召回失败，降级为仅 BM25 召回: %s", e)
+            vec_results = []
+            self.degraded = True
+            self.degraded_reason = f"向量召回失败: {e}"
+
+        # 2. RRF 融合（单路为空时等价于另一路结果的排名）
         fused = self.rrf_fuse(bm25_results, vec_results, top_k=15)
 
-        # 3. 向量精排（余弦 0.7 + 归一化 RRF 0.3 加权融合）
+        # 3. 向量精排（余弦 0.7 + 归一化 RRF 0.3 加权融合）；
+        #    精排内部编码失败已有兜底，回退为 RRF 原始排序
         reranked = self.rerank(query, fused, top_k=top_k)
 
         return reranked
